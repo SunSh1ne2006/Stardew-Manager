@@ -1,0 +1,174 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace Stardew_Manager
+{
+    public class OptimizationService
+    {
+        // Запись о конкретном событии посадки
+        public class PlantingEvent
+        {
+            public int Day { get; set; }
+            public string CropName { get; set; }
+            public int Quantity { get; set; }
+            public int Cost { get; set; }
+        }
+
+        public class PlantedCrop
+        {
+            public Crop Crop { get; set; }
+            public int PlantedDay { get; set; }
+            public int DaysToNextHarvest { get; set; }
+            public bool IsHarvestedOnce { get; set; }
+        }
+
+        public class PlanResult
+        {
+            public List<PlantingEvent> Schedule { get; set; } = new List<PlantingEvent>();
+            public Dictionary<string, int> TotalPlantedSummary { get; set; } = new Dictionary<string, int>();
+            public int FinalMoney { get; set; }
+            public int TotalNetProfit { get; set; }
+            public int TotalSpentOnSeeds { get; set; }
+        }
+
+        public static PlanResult CalculateBestPlan(List<Crop> availableCrops, int startMoney, int totalPlots)
+        {
+            int currentMoney = startMoney;
+            int totalSpent = 0;
+            List<PlantedCrop> activePlots = new List<PlantedCrop>();
+
+            var result = new PlanResult();
+
+            for (int day = 1; day <= 28; day++)
+            {
+                //  Сбор урожая с выросших гряодк
+                for (int i = activePlots.Count - 1; i >= 0; i--)
+                {
+                    var plot = activePlots[i];
+                    plot.DaysToNextHarvest--;
+
+                    if (plot.DaysToNextHarvest == 0)
+                    {
+                        int revenue = (int)Math.Floor(plot.Crop.AvgYield * plot.Crop.SellPrice);
+                        currentMoney += revenue;
+
+                        if (plot.Crop.Regrows)
+                        {
+                            plot.DaysToNextHarvest = plot.Crop.RegrowTime;
+                            plot.IsHarvestedOnce = true;
+                        }
+                        else
+                        {
+                            activePlots.RemoveAt(i);
+                        }
+                    }
+                }
+
+                // заполнение свободных грядок
+                int freePlots = totalPlots - activePlots.Count;
+
+                if (freePlots > 0 && currentMoney > 0)
+                {
+                    var bestPlan = FindBestPlantingForDay(availableCrops, currentMoney, freePlots, day);
+
+                    foreach (var kvp in bestPlan)
+                    {
+                        Crop cropToPlant = kvp.Key;
+                        int count = kvp.Value;
+                        int cost = cropToPlant.SeedPrice * count;
+
+                        currentMoney -= cost;
+                        totalSpent += cost;
+
+                        for (int c = 0; c < count; c++)
+                        {
+                            activePlots.Add(new PlantedCrop
+                            {
+                                Crop = cropToPlant,
+                                PlantedDay = day,
+                                DaysToNextHarvest = cropToPlant.GrowthTime
+                            });
+                        }
+
+                        // фиксация посадки
+                        result.Schedule.Add(new PlantingEvent
+                        {
+                            Day = day,
+                            CropName = cropToPlant.Name,
+                            Quantity = count,
+                            Cost = cost
+                        });
+
+                        // статистика
+                        if (!result.TotalPlantedSummary.ContainsKey(cropToPlant.Name))
+                            result.TotalPlantedSummary[cropToPlant.Name] = 0;
+                        result.TotalPlantedSummary[cropToPlant.Name] += count;
+                    }
+                }
+            }
+
+            result.FinalMoney = currentMoney;
+            result.TotalSpentOnSeeds = totalSpent;
+            result.TotalNetProfit = currentMoney - startMoney;
+
+            return result;
+        }
+
+        private static Dictionary<Crop, int> FindBestPlantingForDay(List<Crop> crops, int money, int plots, int currentDay)
+        {
+            var validCrops = crops
+                .Select(c => new { Crop = c, Profit = c.CalculateProfitForSeason(currentDay) })
+                .Where(x => x.Profit > 0 && x.Crop.SeedPrice <= money)
+                .ToList();
+
+            if (!validCrops.Any() || plots <= 0 || money <= 0)
+                return new Dictionary<Crop, int>();
+
+            int[,] dp = new int[money + 1, plots + 1];
+            int[,] parent = new int[money + 1, plots + 1];
+
+            for (int w = 0; w <= money; w++)
+                for (int p = 0; p <= plots; p++)
+                    parent[w, p] = -1;
+
+            for (int i = 0; i < validCrops.Count; i++)
+            {
+                int cost = validCrops[i].Crop.SeedPrice;
+                int profit = validCrops[i].Profit;
+
+                for (int w = cost; w <= money; w++)
+                {
+                    for (int p = 1; p <= plots; p++)
+                    {
+                        if (dp[w - cost, p - 1] + profit > dp[w, p])
+                        {
+                            dp[w, p] = dp[w - cost, p - 1] + profit;
+                            parent[w, p] = i;
+                        }
+                    }
+                }
+            }
+
+            int currW = money;
+            int currP = plots;
+            var selected = new Dictionary<Crop, int>();
+
+            while (currW > 0 && currP > 0 && parent[currW, currP] != -1)
+            {
+                int cropIdx = parent[currW, currP];
+                var crop = validCrops[cropIdx].Crop;
+
+                if (selected.ContainsKey(crop))
+                    selected[crop]++;
+                else
+                    selected[crop] = 1;
+
+                currW -= crop.SeedPrice;
+                currP -= 1;
+            }
+
+            return selected;
+        }
+    }
+}

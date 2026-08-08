@@ -1,0 +1,48 @@
+﻿using System;
+
+namespace Stardew_Manager
+{
+    public class Crop
+    {
+        public string Name { get; set; }
+        public int SeedPrice { get; set; }
+        public int SellPrice { get; set; }
+        public int GrowthTime { get; set; }
+        public bool Regrows { get; set; }
+        public int RegrowTime { get; set; }
+        public int MinYield { get; set; }
+        public int MaxYield { get; set; }
+
+        public double AvgYield => (MinYield + MaxYield) / 2.0;
+
+        public int CalculateProfitForSeason(int startDay, int totalDays = 28)
+        {
+            if (startDay + GrowthTime > totalDays)
+                return 0;
+
+            if (!Regrows)
+            {
+                double grossIncome = AvgYield * SellPrice;
+                return (int)Math.Floor(grossIncome) - SeedPrice;
+            }
+            else
+            {
+                int harvests = 1 + (int)Math.Floor((double)(totalDays - (startDay + GrowthTime)) / RegrowTime);
+                double grossIncome = harvests * AvgYield * SellPrice;
+                return (int)Math.Floor(grossIncome) - SeedPrice;
+            }
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj is Crop other)
+                return this.Name == other.Name;
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return Name != null ? Name.GetHashCode() : 0;
+        }
+    }
+}
