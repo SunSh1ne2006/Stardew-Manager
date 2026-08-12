@@ -55,7 +55,7 @@ namespace Stardew_Manager
                 await connection.OpenAsync();
 
                 string script = @"
-                    -- 1. Таблица Seasons с английскими названиями и CHECK constraint
+                    -- 1. Таблица Seasons
                     IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Seasons')
                     BEGIN
                         CREATE TABLE dbo.Seasons (
@@ -65,13 +65,10 @@ namespace Stardew_Manager
                         );
 
                         INSERT INTO dbo.Seasons (Season_Name) VALUES 
-                        ('Spring'), 
-                        ('Summer'), 
-                        ('Fall'), 
-                        ('Winter');
+                        ('Spring'), ('Summer'), ('Fall'), ('Winter');
                     END;
 
-                    -- 2. Таблица Crops с русскими названиями культур
+                    -- 2. Таблица Crops с полем Image_Name
                     IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Crops')
                     BEGIN
                         CREATE TABLE dbo.Crops (
@@ -84,15 +81,16 @@ namespace Stardew_Manager
                             Regrow_Time INT NULL,
                             Min_Yield_Quantity INT NOT NULL,
                             Max_Yield_Quantity INT NOT NULL,
-                            Extra_Crop_Chance FLOAT NULL
+                            Extra_Crop_Chance FLOAT NULL,
+                            Image_Name NVARCHAR(100) NULL
                         );
 
                         INSERT INTO dbo.Crops 
-                        (Name, Seed_Price, Price, Growth_Time, Reusable, Regrow_Time, Min_Yield_Quantity, Max_Yield_Quantity, Extra_Crop_Chance)
+                        (Name, Seed_Price, Price, Growth_Time, Reusable, Regrow_Time, Min_Yield_Quantity, Max_Yield_Quantity, Extra_Crop_Chance, Image_Name)
                         VALUES 
-                        (N'Пастернак', 20, 35, 4, 0, NULL, 1, 1, NULL),
-                        (N'Клубника', 100, 120, 8, 1, 4, 1, 1, 0.02),
-                        (N'Цветная капуста', 80, 175, 12, 0, NULL, 1, 1, NULL);
+                        (N'Пастернак', 20, 35, 4, 0, NULL, 1, 1, NULL, 'parsnip.png'),
+                        (N'Клубника', 100, 120, 8, 1, 4, 1, 1, 0.02, 'strawberry.png'),
+                        (N'Цветная капуста', 80, 175, 12, 0, NULL, 1, 1, NULL, 'cauliflower.png');
                     END;
 
                     -- 3. Связующая таблица Crop_Season
@@ -107,9 +105,7 @@ namespace Stardew_Manager
                         );
 
                         INSERT INTO dbo.Crop_Season (CropId, SeasonID) VALUES 
-                        (1, 1), 
-                        (2, 1), 
-                        (3, 1);
+                        (1, 1), (2, 1), (3, 1);
                     END;
                 ";
 

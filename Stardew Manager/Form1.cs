@@ -113,14 +113,16 @@ namespace Stardew_Manager
         private void DisplayInitialCrops()
         {
             DataTable table = new DataTable();
+            table.Columns.Add("Иконка", typeof(Image));
             table.Columns.Add("Название культуры", typeof(string));
 
             foreach (var crop in _availableCrops)
             {
-                table.Rows.Add(crop.Name);
+                table.Rows.Add(crop.Icon, crop.Name);
             }
 
             Data.DataSource = table;
+            ConfigureGridImageColumn();
         }
 
         private void OnCalculateButtonClick(object sender, EventArgs e)
@@ -141,18 +143,32 @@ namespace Stardew_Manager
 
             DataTable scheduleTable = new DataTable();
             scheduleTable.Columns.Add("День сезона", typeof(string));
+            scheduleTable.Columns.Add("Иконка", typeof(Image));
             scheduleTable.Columns.Add("Культура", typeof(string));
             scheduleTable.Columns.Add("Количество (шт)", typeof(int));
             scheduleTable.Columns.Add("Затраты (g)", typeof(int));
 
             foreach (var planting in result.Schedule)
             {
-                scheduleTable.Rows.Add($"День {planting.Day}", planting.CropName, planting.Quantity, planting.Cost);
+                var cropObj = _availableCrops.Find(c => c.Name == planting.CropName);
+                Image icon = cropObj?.Icon;
+
+                scheduleTable.Rows.Add($"День {planting.Day}", icon, planting.CropName, planting.Quantity, planting.Cost);
             }
 
             Data.DataSource = scheduleTable;
+            ConfigureGridImageColumn();
 
             ResultSummaryLabel.Text = $"Затраты: {result.TotalSpentOnSeeds}g | Баланс в конце: {result.FinalMoney}g | Чистая прибыль: {result.TotalNetProfit}g";
+        }
+
+        private void ConfigureGridImageColumn()
+        {
+            if (Data.Columns.Contains("Иконка") && Data.Columns["Иконка"] is DataGridViewImageColumn imageColumn)
+            {
+                imageColumn.ImageLayout = DataGridViewImageCellLayout.Zoom;
+                imageColumn.Width = 40;
+            }
         }
 
     }

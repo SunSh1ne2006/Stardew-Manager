@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Drawing;
+using System.IO;
+using System.Windows.Forms;
 
 namespace Stardew_Manager
 {
@@ -13,6 +16,31 @@ namespace Stardew_Manager
         public int MinYield { get; set; }
         public int MaxYield { get; set; }
         public double ExtraCropChance { get; set; }
+        public string ImageName { get; set; }
+
+        public Image Icon
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(ImageName))
+                    return null;
+
+                string fullPath = Path.Combine(Application.StartupPath, "Images", "Crops", ImageName);
+                if (File.Exists(fullPath))
+                {
+                    try
+                    {
+                        return Image.FromFile(fullPath);
+                    }
+                    catch
+                    {
+                        return null;
+                    }
+                }
+                return null;
+            }
+        }
+
         public double AvgYield
         {
             get
