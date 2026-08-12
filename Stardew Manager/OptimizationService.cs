@@ -6,7 +6,6 @@ namespace Stardew_Manager
 {
     public class OptimizationService
     {
-        // Запись о конкретном событии посадки
         public class PlantingEvent
         {
             public int Day { get; set; }
@@ -27,6 +26,10 @@ namespace Stardew_Manager
         {
             public List<PlantingEvent> Schedule { get; set; } = new List<PlantingEvent>();
             public Dictionary<string, int> TotalPlantedSummary { get; set; } = new Dictionary<string, int>();
+            
+            // Суммарный ожидаемый урожай в штуках по каждому растению
+            public Dictionary<string, double> TotalYieldSummary { get; set; } = new Dictionary<string, double>();
+            
             public int FinalMoney { get; set; }
             public int TotalNetProfit { get; set; }
             public int TotalSpentOnSeeds { get; set; }
@@ -42,7 +45,7 @@ namespace Stardew_Manager
 
             for (int day = 1; day <= 28; day++)
             {
-                //  Сбор урожая с выросших гряодк
+                // 1. Сбор урожая со зрелых грядок
                 for (int i = activePlots.Count - 1; i >= 0; i--)
                 {
                     var plot = activePlots[i];
@@ -50,8 +53,15 @@ namespace Stardew_Manager
 
                     if (plot.DaysToNextHarvest == 0)
                     {
-                        int revenue = (int)Math.Floor(plot.Crop.AvgYield * plot.Crop.SellPrice);
+                        // Подсчет математического ожидания выручки и объема урожая с 1 растения
+                        double expectedYield = plot.Crop.AvgYield;
+                        int revenue = (int)Math.Floor(expectedYield * plot.Crop.SellPrice);
                         currentMoney += revenue;
+
+                        // Накапливаем общий урожай по названию культуры
+                        if (!result.TotalYieldSummary.ContainsKey(plot.Crop.Name))
+                            result.TotalYieldSummary[plot.Crop.Name] = 0;
+                        result.TotalYieldSummary[plot.Crop.Name] += expectedYield;
 
                         if (plot.Crop.Regrows)
                         {
@@ -65,7 +75,7 @@ namespace Stardew_Manager
                     }
                 }
 
-                // заполнение свободных грядок
+                // 2. Покупка и посадка на свободные грядки
                 int freePlots = totalPlots - activePlots.Count;
 
                 if (freePlots > 0 && currentMoney > 0)
@@ -91,7 +101,6 @@ namespace Stardew_Manager
                             });
                         }
 
-                        // фиксация посадки
                         result.Schedule.Add(new PlantingEvent
                         {
                             Day = day,
@@ -100,7 +109,6 @@ namespace Stardew_Manager
                             Cost = cost
                         });
 
-                        // статистика
                         if (!result.TotalPlantedSummary.ContainsKey(cropToPlant.Name))
                             result.TotalPlantedSummary[cropToPlant.Name] = 0;
                         result.TotalPlantedSummary[cropToPlant.Name] += count;

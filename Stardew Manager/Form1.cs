@@ -64,7 +64,7 @@ namespace Stardew_Manager
         private void LoadDataFromDatabase(string selectedSeason)
         {
             string query = @"
-                SELECT c.Name, c.Seed_Price, c.Price, c.Growth_Time, c.Reusable, c.Regrow_Time, c.Min_Yield_Quantity, c.Max_Yield_Quantity 
+                SELECT c.Name, c.Seed_Price, c.Price, c.Growth_Time, c.Reusable, c.Regrow_Time, c.Min_Yield_Quantity, c.Max_Yield_Quantity, c.Extra_Crop_Chance 
                 FROM Crops c
                 INNER JOIN Crop_Season cs ON c.Id = cs.CropId
                 INNER JOIN Seasons s ON cs.SeasonID = s.Id
@@ -93,7 +93,10 @@ namespace Stardew_Manager
                             Regrows = Convert.ToBoolean(reader["Reusable"]),
                             RegrowTime = reader["Regrow_Time"] != DBNull.Value ? Convert.ToInt32(reader["Regrow_Time"]) : 0,
                             MinYield = Convert.ToInt32(reader["Min_Yield_Quantity"]),
-                            MaxYield = Convert.ToInt32(reader["Max_Yield_Quantity"])
+                            MaxYield = Convert.ToInt32(reader["Max_Yield_Quantity"]),
+                            ExtraCropChance = reader["Extra_Crop_Chance"] != DBNull.Value
+        ? Convert.ToDouble(reader["Extra_Crop_Chance"])
+        : 0.0
                         });
                     }
                 }

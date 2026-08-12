@@ -47,7 +47,7 @@ namespace Stardew_Manager
 
             Label Version = new Label
             {
-                Text = "0.1.0",
+                Text = "0.5.0",
                 Location = new Point(1840, 10),
                 AutoSize = true,
                 Font = new Font("Arial", 12, FontStyle.Bold)

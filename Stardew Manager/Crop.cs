@@ -12,8 +12,18 @@ namespace Stardew_Manager
         public int RegrowTime { get; set; }
         public int MinYield { get; set; }
         public int MaxYield { get; set; }
+        public double ExtraCropChance { get; set; }
+        public double AvgYield
+        {
+            get
+            {
+                if (MinYield == MaxYield)
+                    return MinYield;
 
-        public double AvgYield => (MinYield + MaxYield) / 2.0;
+                int extraAttempts = MaxYield - MinYield;
+                return MinYield + (extraAttempts * ExtraCropChance);
+            }
+        }
 
         public int CalculateProfitForSeason(int startDay, int totalDays = 28)
         {
