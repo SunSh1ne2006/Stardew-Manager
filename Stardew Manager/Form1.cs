@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Data;
+using System.Threading.Tasks;
 using System.Windows.Forms;
-using Microsoft.Data.SqlClient;
 
 namespace Stardew_Manager
 {
@@ -16,96 +17,96 @@ namespace Stardew_Manager
         private ComboBox SeasonComboBox;
         private Label SeasonLabel;
 
-        private readonly List<Crop> _availableCrops = new List<Crop>();
-        private readonly string _connectionString = @"Data Source=localhost\MSSQLSERVER02;Initial Catalog=Stardew Manager;Integrated Security=True;Persist Security Info=False;Pooling=False;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=True;Command Timeout=0;";
+        private List<Crop> _availableCrops = new List<Crop>();
+        private readonly DatabaseService _dbService;
 
         public Form1()
         {
             InitializeCustomCard();
-            LoadSeasonsFromDatabase();
+
+            string connectionString = ConfigurationManager.ConnectionStrings["StardewDb"]?.ConnectionString
+                ?? @"Data Source=localhost\MSSQLSERVER02;Initial Catalog=Stardew Manager;Integrated Security=True;Persist Security Info=False;Pooling=False;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=True;Command Timeout=0;";
+
+            _dbService = new DatabaseService(connectionString);
+            this.Load += OnFormLoad;
         }
 
-        private void LoadSeasonsFromDatabase()
+        private async void OnFormLoad(object sender, EventArgs e)
         {
-            string query = "SELECT Season_Name FROM Seasons";
-
             try
             {
-                using (SqlConnection connection = new SqlConnection(_connectionString))
-                {
-                    SqlCommand command = new SqlCommand(query, connection);
-                    connection.Open();
-                    SqlDataReader reader = command.ExecuteReader();
+                string connectionString = ConfigurationManager.ConnectionStrings["StardewDb"]?.ConnectionString
+                    ?? @"Data Source=localhost\MSSQLSERVER02;Initial Catalog=Stardew Manager;Integrated Security=True;Persist Security Info=False;Pooling=False;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=True;Command Timeout=0;";
 
-                    SeasonComboBox.Items.Clear();
-                    while (reader.Read())
-                    {
-                        SeasonComboBox.Items.Add(reader["Season_Name"].ToString().Trim());
-                    }
+                var initializer = new DatabaseInitializer(connectionString);
+                await initializer.InitializeDatabaseAsync();
+
+                await LoadSeasonsAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка инициализации базы данных: {ex.Message}", "Ошибка БД", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private async Task LoadSeasonsAsync()
+        {
+            try
+            {
+                SeasonComboBox.Enabled = false;
+
+                var seasons = await _dbService.GetSeasonsAsync();
+
+                SeasonComboBox.SelectedIndexChanged -= OnSeasonChanged;
+                SeasonComboBox.Items.Clear();
+
+                foreach (var season in seasons)
+                {
+                    SeasonComboBox.Items.Add(season);
                 }
 
                 if (SeasonComboBox.Items.Count > 0)
+                {
                     SeasonComboBox.SelectedIndex = 0;
+ 
+                    await LoadDataForSelectedSeasonAsync(SeasonComboBox.SelectedItem.ToString());
+                }
+
+                SeasonComboBox.SelectedIndexChanged += OnSeasonChanged;
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Ошибка при загрузке сезонов: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-        }
-
-        private void OnSeasonChanged(object sender, EventArgs e)
-        {
-            if (SeasonComboBox.SelectedItem != null)
+            finally
             {
-                LoadDataFromDatabase(SeasonComboBox.SelectedItem.ToString());
+                SeasonComboBox.Enabled = true;
             }
         }
 
-        private void LoadDataFromDatabase(string selectedSeason)
+        private async void OnSeasonChanged(object sender, EventArgs e)
         {
-            string query = @"
-                SELECT c.Name, c.Seed_Price, c.Price, c.Growth_Time, c.Reusable, c.Regrow_Time, c.Min_Yield_Quantity, c.Max_Yield_Quantity, c.Extra_Crop_Chance 
-                FROM Crops c
-                INNER JOIN Crop_Season cs ON c.Id = cs.CropId
-                INNER JOIN Seasons s ON cs.SeasonID = s.Id
-                WHERE RTRIM(s.Season_Name) = @SeasonName";
+            if (SeasonComboBox.SelectedItem != null)
+            {
+                await LoadDataForSelectedSeasonAsync(SeasonComboBox.SelectedItem.ToString());
+            }
+        }
 
+        private async Task LoadDataForSelectedSeasonAsync(string selectedSeason)
+        {
             try
             {
-                using (SqlConnection connection = new SqlConnection(_connectionString))
-                {
-                    SqlCommand command = new SqlCommand(query, connection);
-                    command.Parameters.AddWithValue("@SeasonName", selectedSeason);
-
-                    connection.Open();
-                    SqlDataReader reader = command.ExecuteReader();
-
-                    _availableCrops.Clear();
-
-                    while (reader.Read())
-                    {
-                        _availableCrops.Add(new Crop
-                        {
-                            Name = reader["Name"].ToString(),
-                            SeedPrice = Convert.ToInt32(reader["Seed_Price"]),
-                            SellPrice = Convert.ToInt32(reader["Price"]),
-                            GrowthTime = Convert.ToInt32(reader["Growth_Time"]),
-                            Regrows = Convert.ToBoolean(reader["Reusable"]),
-                            RegrowTime = reader["Regrow_Time"] != DBNull.Value ? Convert.ToInt32(reader["Regrow_Time"]) : 0,
-                            MinYield = Convert.ToInt32(reader["Min_Yield_Quantity"]),
-                            MaxYield = Convert.ToInt32(reader["Max_Yield_Quantity"]),
-                            ExtraCropChance = reader["Extra_Crop_Chance"] != DBNull.Value
-        ? Convert.ToDouble(reader["Extra_Crop_Chance"])
-        : 0.0
-                        });
-                    }
-                }
-
+                CalculateButton.Enabled = false; 
+                _availableCrops = await _dbService.GetCropsBySeasonAsync(selectedSeason);
                 DisplayInitialCrops();
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Ошибка при загрузке культур: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                CalculateButton.Enabled = true;
             }
         }
 
@@ -153,5 +154,6 @@ namespace Stardew_Manager
 
             ResultSummaryLabel.Text = $"Затраты: {result.TotalSpentOnSeeds}g | Баланс в конце: {result.FinalMoney}g | Чистая прибыль: {result.TotalNetProfit}g";
         }
+
     }
 }

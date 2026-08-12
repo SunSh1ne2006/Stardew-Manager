@@ -1,4 +1,6 @@
-﻿using System.Drawing;
+﻿using System;
+using System.Drawing;
+using System.IO;
 using System.Windows.Forms;
 
 namespace Stardew_Manager
@@ -24,11 +26,18 @@ namespace Stardew_Manager
                 BackColor = Color.Transparent
             };
 
-            try
+            string imagePath = Path.Combine(Application.StartupPath, "Images", "logo.jpg");
+            if (File.Exists(imagePath))
             {
-                pictureBox.Image = Image.FromFile(@"C:\Users\ACER\source\repos\Stardew Manager\Images\logo.jpg");
+                try
+                {
+                    pictureBox.Image = Image.FromFile(imagePath);
+                }
+                catch
+                {
+  
+                }
             }
-            catch { }
 
             Panel panelStrip = new Panel
             {
@@ -149,6 +158,15 @@ namespace Stardew_Manager
 
             this.Controls.Add(cardPanel);
             this.WindowState = FormWindowState.Maximized;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && (components != null))
+            {
+                components.Dispose();
+            }
+            base.Dispose(disposing);
         }
     }
 }
