@@ -10,6 +10,7 @@ namespace Stardew_Manager
         {
             public int Day { get; set; }
             public string CropName { get; set; }
+            public string FertilizerName { get; set; }
             public int Quantity { get; set; }
             public int Cost { get; set; }
         }
@@ -17,6 +18,7 @@ namespace Stardew_Manager
         public class PlantedCrop
         {
             public Crop Crop { get; set; }
+            public string FertilizerName { get; set; }
             public int PlantedDay { get; set; }
             public int DaysToNextHarvest { get; set; }
             public bool IsHarvestedOnce { get; set; }
@@ -32,24 +34,33 @@ namespace Stardew_Manager
             public int TotalSpentOnSeeds { get; set; }
         }
 
-        public static PlanResult CalculateBestPlan(List<Crop> availableCrops, int startMoney, int totalPlots)
+        public static PlanResult CalculateBestPlan(
+            List<Crop> availableCrops,
+            List<IngredientItem> inventoryItems, // Запасы инвентаря из БД
+            int startMoney,
+            int totalPlots)
         {
             int currentMoney = startMoney;
             int totalSpent = 0;
             List<PlantedCrop> activePlots = new List<PlantedCrop>();
 
+            // Словарь остатков удобрений в инвентаре для списания при расчете
+            var fertilizerStock = inventoryItems
+                .Where(item => item.AvailableQuantity > 0)
+                .ToDictionary(item => item.Name, item => item.AvailableQuantity);
+
             var result = new PlanResult();
 
             for (int day = 1; day <= 28; day++)
             {
+                // 1. Сбор урожая
                 for (int i = activePlots.Count - 1; i >= 0; i--)
                 {
                     var plot = activePlots[i];
                     plot.DaysToNextHarvest--;
 
-                    if (plot.DaysToNextHarvest == 0)
+                    if (plot.DaysToNextHarvest <= 0)
                     {
- 
                         double expectedYield = plot.Crop.AvgYield;
                         int revenue = (int)Math.Floor(expectedYield * plot.Crop.SellPrice);
                         currentMoney += revenue;
@@ -70,6 +81,7 @@ namespace Stardew_Manager
                     }
                 }
 
+                // 2. Посадка
                 int freePlots = totalPlots - activePlots.Count;
 
                 if (freePlots > 0 && currentMoney > 0)
@@ -85,11 +97,15 @@ namespace Stardew_Manager
                         currentMoney -= cost;
                         totalSpent += cost;
 
+                        // Назначаем доступное удобрение из запасов инвентаря
+                        string usedFertilizerName = SelectBestFertilizer(fertilizerStock, count);
+
                         for (int c = 0; c < count; c++)
                         {
                             activePlots.Add(new PlantedCrop
                             {
                                 Crop = cropToPlant,
+                                FertilizerName = usedFertilizerName,
                                 PlantedDay = day,
                                 DaysToNextHarvest = cropToPlant.GrowthTime
                             });
@@ -99,6 +115,7 @@ namespace Stardew_Manager
                         {
                             Day = day,
                             CropName = cropToPlant.Name,
+                            FertilizerName = usedFertilizerName,
                             Quantity = count,
                             Cost = cost
                         });
@@ -115,6 +132,20 @@ namespace Stardew_Manager
             result.TotalNetProfit = currentMoney - startMoney;
 
             return result;
+        }
+
+        private static string SelectBestFertilizer(Dictionary<string, int> stock, int requiredCount)
+        {
+            foreach (var key in stock.Keys.ToList())
+            {
+                if (stock[key] >= requiredCount)
+                {
+                    stock[key] -= requiredCount;
+                    return key;
+                }
+            }
+
+            return "Без удобрения";
         }
 
         private static Dictionary<Crop, int> FindBestPlantingForDay(List<Crop> crops, int money, int plots, int currentDay)

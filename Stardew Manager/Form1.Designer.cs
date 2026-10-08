@@ -35,7 +35,7 @@ namespace Stardew_Manager
                 }
                 catch
                 {
-  
+
                 }
             }
 
@@ -121,6 +121,16 @@ namespace Stardew_Manager
             };
             CalculateButton.Click += OnCalculateButtonClick;
 
+            FertilizerButton = new Button
+            {
+                Text = "Удобрения и ресурсы",
+                Location = new Point(150, 245),
+                Size = new Size(250, 30),
+                Font = new Font("Arial", 10, FontStyle.Bold),
+                BackColor = Color.LightYellow
+            };
+            FertilizerButton.Click += OnFertilizerButtonClick;
+
             ResultSummaryLabel = new Label
             {
                 Text = "",
@@ -153,6 +163,7 @@ namespace Stardew_Manager
             cardPanel.Controls.Add(MoneyQuantity);
             cardPanel.Controls.Add(MoneyQuantityTextBox);
             cardPanel.Controls.Add(CalculateButton);
+            cardPanel.Controls.Add(FertilizerButton);
             cardPanel.Controls.Add(ResultSummaryLabel);
             cardPanel.Controls.Add(Data);
 

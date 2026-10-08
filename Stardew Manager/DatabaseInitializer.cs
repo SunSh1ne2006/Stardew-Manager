@@ -7,7 +7,7 @@ namespace Stardew_Manager
     public class DatabaseInitializer
     {
         private readonly string _serverConnectionString;
-        private readonly string _databaseName = "Stardew Manager";
+        private readonly string _databaseName = "Stardew Manage";
 
         public DatabaseInitializer(string fullConnectionString)
         {
@@ -68,7 +68,7 @@ namespace Stardew_Manager
                         ('Spring'), ('Summer'), ('Fall'), ('Winter');
                     END;
 
-                    -- 2. Таблица Crops с полем Image_Name
+                    -- 2. Таблица Crops
                     IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Crops')
                     BEGIN
                         CREATE TABLE dbo.Crops (
@@ -106,6 +106,31 @@ namespace Stardew_Manager
 
                         INSERT INTO dbo.Crop_Season (CropId, SeasonID) VALUES 
                         (1, 1), (2, 1), (3, 1);
+                    END;
+
+                    -- 4. Таблица Ingredients
+                    IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Ingredients')
+                    BEGIN
+                        CREATE TABLE dbo.Ingredients (
+                            Id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                            Name NCHAR(100) NOT NULL,
+                            Sell_Price INT NOT NULL
+                        );
+
+                        INSERT INTO dbo.Ingredients (Name, Sell_Price) VALUES 
+                        (N'Сок (Sap)', 2),
+                        (N'Костная мука (Bone Meal)', 5),
+                        (N'Кора (Moss)', 5);
+                    END;
+
+                    -- 5. Таблица User_Inventory
+                    IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'User_Inventory')
+                    BEGIN
+                        CREATE TABLE dbo.User_Inventory (
+                            IngredientId INT NOT NULL PRIMARY KEY,
+                            Available_Quantity INT NOT NULL,
+                            CONSTRAINT FK_UserInventory_Ingredients FOREIGN KEY (IngredientId) REFERENCES dbo.Ingredients(Id) ON DELETE CASCADE
+                        );
                     END;
                 ";
 

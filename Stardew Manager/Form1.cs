@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
+using System.Drawing;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -13,6 +14,7 @@ namespace Stardew_Manager
         private TextBox QuantityTextBox;
         private TextBox MoneyQuantityTextBox;
         private Button CalculateButton;
+        private Button FertilizerButton;
         private Label ResultSummaryLabel;
         private ComboBox SeasonComboBox;
         private Label SeasonLabel;
@@ -68,7 +70,6 @@ namespace Stardew_Manager
                 if (SeasonComboBox.Items.Count > 0)
                 {
                     SeasonComboBox.SelectedIndex = 0;
- 
                     await LoadDataForSelectedSeasonAsync(SeasonComboBox.SelectedItem.ToString());
                 }
 
@@ -96,7 +97,7 @@ namespace Stardew_Manager
         {
             try
             {
-                CalculateButton.Enabled = false; 
+                CalculateButton.Enabled = false;
                 _availableCrops = await _dbService.GetCropsBySeasonAsync(selectedSeason);
                 DisplayInitialCrops();
             }
@@ -125,7 +126,7 @@ namespace Stardew_Manager
             ConfigureGridImageColumn();
         }
 
-        private void OnCalculateButtonClick(object sender, EventArgs e)
+        private async void OnCalculateButtonClick(object sender, EventArgs e)
         {
             if (!int.TryParse(QuantityTextBox.Text, out int plots) || plots <= 0)
             {
@@ -139,27 +140,53 @@ namespace Stardew_Manager
                 return;
             }
 
-            var result = OptimizationService.CalculateBestPlan(_availableCrops, money, plots);
-
-            DataTable scheduleTable = new DataTable();
-            scheduleTable.Columns.Add("День сезона", typeof(string));
-            scheduleTable.Columns.Add("Иконка", typeof(Image));
-            scheduleTable.Columns.Add("Культура", typeof(string));
-            scheduleTable.Columns.Add("Количество (шт)", typeof(int));
-            scheduleTable.Columns.Add("Затраты (g)", typeof(int));
-
-            foreach (var planting in result.Schedule)
+            try
             {
-                var cropObj = _availableCrops.Find(c => c.Name == planting.CropName);
-                Image icon = cropObj?.Icon;
+                // Загружаем инвентарь пользователя с количеством ресурсов из БД
+                List<IngredientItem> inventory = await _dbService.GetUserInventoryAsync();
 
-                scheduleTable.Rows.Add($"День {planting.Day}", icon, planting.CropName, planting.Quantity, planting.Cost);
+                var result = OptimizationService.CalculateBestPlan(_availableCrops, inventory, money, plots);
+
+                DataTable scheduleTable = new DataTable();
+                scheduleTable.Columns.Add("День сезона", typeof(string));
+                scheduleTable.Columns.Add("Иконка", typeof(Image));
+                scheduleTable.Columns.Add("Культура", typeof(string));
+                scheduleTable.Columns.Add("Удобрение", typeof(string));
+                scheduleTable.Columns.Add("Количество (шт)", typeof(int));
+                scheduleTable.Columns.Add("Затраты (g)", typeof(int));
+
+                foreach (var planting in result.Schedule)
+                {
+                    var cropObj = _availableCrops.Find(c => c.Name == planting.CropName);
+                    Image icon = cropObj?.Icon;
+
+                    scheduleTable.Rows.Add(
+                        $"День {planting.Day}",
+                        icon,
+                        planting.CropName,
+                        planting.FertilizerName,
+                        planting.Quantity,
+                        planting.Cost
+                    );
+                }
+
+                Data.DataSource = scheduleTable;
+                ConfigureGridImageColumn();
+
+                ResultSummaryLabel.Text = $"Затраты: {result.TotalSpentOnSeeds}g | Баланс в конце: {result.FinalMoney}g | Чистая прибыль: {result.TotalNetProfit}g";
             }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка расчета: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
 
-            Data.DataSource = scheduleTable;
-            ConfigureGridImageColumn();
-
-            ResultSummaryLabel.Text = $"Затраты: {result.TotalSpentOnSeeds}g | Баланс в конце: {result.FinalMoney}g | Чистая прибыль: {result.TotalNetProfit}g";
+        private void OnFertilizerButtonClick(object sender, EventArgs e)
+        {
+            using (var fertilizerForm = new FertilizerForm(_dbService))
+            {
+                fertilizerForm.ShowDialog();
+            }
         }
 
         private void ConfigureGridImageColumn()
@@ -170,6 +197,5 @@ namespace Stardew_Manager
                 imageColumn.Width = 40;
             }
         }
-
     }
 }

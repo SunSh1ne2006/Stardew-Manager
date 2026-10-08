@@ -5,6 +5,21 @@ using Microsoft.Data.SqlClient;
 
 namespace Stardew_Manager
 {
+    public class IngredientItem
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public int SellPrice { get; set; }
+        public int AvailableQuantity { get; set; }
+    }
+
+    public class FertilizerItem
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public decimal GrowthMultiplier { get; set; }
+    }
+
     public class DatabaseService
     {
         private readonly string _connectionString;
@@ -79,6 +94,91 @@ namespace Stardew_Manager
             }
 
             return crops;
+        }
+
+        public async Task<List<IngredientItem>> GetUserInventoryAsync()
+        {
+            var list = new List<IngredientItem>();
+            string query = @"
+                SELECT i.Id, i.Name, i.Sell_Price, ISNULL(inv.Available_Quantity, 0) AS Available_Quantity
+                FROM Ingredients i
+                LEFT JOIN User_Inventory inv ON i.Id = inv.IngredientId";
+
+            using (SqlConnection connection = new SqlConnection(_connectionString))
+            {
+                SqlCommand command = new SqlCommand(query, connection);
+                await connection.OpenAsync();
+
+                using (SqlDataReader reader = await command.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        list.Add(new IngredientItem
+                        {
+                            Id = Convert.ToInt32(reader["Id"]),
+                            Name = reader["Name"].ToString().Trim(),
+                            SellPrice = Convert.ToInt32(reader["Sell_Price"]),
+                            AvailableQuantity = Convert.ToInt32(reader["Available_Quantity"])
+                        });
+                    }
+                }
+            }
+
+            return list;
+        }
+
+        public async Task SaveUserInventoryAsync(List<IngredientItem> items)
+        {
+            string mergeQuery = @"
+                MERGE INTO User_Inventory AS target
+                USING (SELECT @IngredientId AS IngredientId, @Quantity AS Available_Quantity) AS source
+                ON (target.IngredientId = source.IngredientId)
+                WHEN MATCHED THEN
+                    UPDATE SET Available_Quantity = source.Available_Quantity
+                WHEN NOT MATCHED THEN
+                    INSERT (IngredientId, Available_Quantity) VALUES (source.IngredientId, source.Available_Quantity);";
+
+            using (SqlConnection connection = new SqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+
+                foreach (var item in items)
+                {
+                    using (SqlCommand command = new SqlCommand(mergeQuery, connection))
+                    {
+                        command.Parameters.AddWithValue("@IngredientId", item.Id);
+                        command.Parameters.AddWithValue("@Quantity", item.AvailableQuantity);
+                        await command.ExecuteNonQueryAsync();
+                    }
+                }
+            }
+        }
+
+        public async Task<List<Fertilizer>> GetFertilizersAsync()
+        {
+            var fertilizers = new List<Fertilizer>();
+
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                await connection.OpenAsync();
+                // Используем только реальные существующие столбцы таблицы Fertilizers
+                string query = "SELECT Id, Name FROM Fertilizers";
+
+                using (var command = new SqlCommand(query, connection))
+                using (var reader = await command.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        fertilizers.Add(new Fertilizer
+                        {
+                            Id = reader.GetInt32(0),
+                            Name = reader.GetString(1)
+                        });
+                    }
+                }
+            }
+
+            return fertilizers;
         }
     }
 }
