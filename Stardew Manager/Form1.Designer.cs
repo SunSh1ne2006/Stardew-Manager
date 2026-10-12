@@ -35,7 +35,7 @@ namespace Stardew_Manager
                 }
                 catch
                 {
-  
+
                 }
             }
 
@@ -132,13 +132,13 @@ namespace Stardew_Manager
 
             Data = new DataGridView()
             {
-                Size = new Size(500, 450),
+                Size = new Size(820, 450),
                 Location = new Point(20, 290),
                 BorderStyle = BorderStyle.FixedSingle,
                 BackgroundColor = Color.White,
                 AllowUserToAddRows = false,
                 ReadOnly = true,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells
             };
 
             panelStrip.Controls.Add(pictureBox);
