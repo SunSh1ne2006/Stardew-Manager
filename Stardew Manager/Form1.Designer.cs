@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
@@ -56,7 +56,7 @@ namespace Stardew_Manager
 
             Label Version = new Label
             {
-                Text = "0.5.0",
+                Text = "0.6.0",
                 Location = new Point(1840, 10),
                 AutoSize = true,
                 Font = new Font("Arial", 12, FontStyle.Bold)
@@ -121,18 +121,56 @@ namespace Stardew_Manager
             };
             CalculateButton.Click += OnCalculateButtonClick;
 
+            Label FertilizerLabel = new Label
+            {
+                Text = "Удобрение",
+                Location = new Point(350, 135),
+                AutoSize = true,
+                Font = new Font("Arial", 12, FontStyle.Bold)
+            };
+
+            FertilizerComboBox = new ComboBox
+            {
+                Location = new Point(480, 135),
+                Size = new Size(260, 30),
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Font = new Font("Arial", 10, FontStyle.Regular)
+            };
+
+            CompareFertilizersButton = new Button
+            {
+                Text = "Сравнить удобрения",
+                Location = new Point(350, 175),
+                Size = new Size(260, 32),
+                Font = new Font("Arial", 10, FontStyle.Bold),
+                BackColor = Color.White,
+                Enabled = false
+            };
+            CompareFertilizersButton.Click += OnCompareFertilizersClick;
+
             ResultSummaryLabel = new Label
             {
                 Text = "",
-                Location = new Point(700, 250),
+                Location = new Point(350, 215),
+                MaximumSize = new Size(1400, 0),
                 AutoSize = true,
                 Font = new Font("Arial", 11, FontStyle.Bold),
                 ForeColor = Color.DarkGreen
             };
 
+            FertilizerSummaryLabel = new Label
+            {
+                Text = "",
+                Location = new Point(20, 720),
+                MaximumSize = new Size(1900, 0),
+                AutoSize = true,
+                Font = new Font("Arial", 10, FontStyle.Bold),
+                ForeColor = Color.DarkSlateBlue
+            };
+
             Data = new DataGridView()
             {
-                Size = new Size(820, 450),
+                Size = new Size(1900, 420),
                 Location = new Point(20, 290),
                 BorderStyle = BorderStyle.FixedSingle,
                 BackgroundColor = Color.White,
@@ -153,8 +191,12 @@ namespace Stardew_Manager
             cardPanel.Controls.Add(MoneyQuantity);
             cardPanel.Controls.Add(MoneyQuantityTextBox);
             cardPanel.Controls.Add(CalculateButton);
+            cardPanel.Controls.Add(FertilizerLabel);
+            cardPanel.Controls.Add(FertilizerComboBox);
+            cardPanel.Controls.Add(CompareFertilizersButton);
             cardPanel.Controls.Add(ResultSummaryLabel);
             cardPanel.Controls.Add(Data);
+            cardPanel.Controls.Add(FertilizerSummaryLabel);
 
             this.Controls.Add(cardPanel);
             this.WindowState = FormWindowState.Maximized;
