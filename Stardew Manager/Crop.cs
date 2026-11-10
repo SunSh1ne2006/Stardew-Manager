@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
@@ -7,7 +7,7 @@ namespace Stardew_Manager
 {
     public class Crop
     {
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
         public int SeedPrice { get; set; }
         public int SellPrice { get; set; }
         public int GrowthTime { get; set; }
@@ -16,7 +16,7 @@ namespace Stardew_Manager
         public int MinYield { get; set; }
         public int MaxYield { get; set; }
         public double ExtraCropChance { get; set; }
-        public string ImageName { get; set; }
+        public string ImageName { get; set; } = string.Empty;
 
         public Image Icon
         {
@@ -41,6 +41,7 @@ namespace Stardew_Manager
             }
         }
 
+        /// <summary>Среднее количество плодов с одного сбора.</summary>
         public double AvgYield
         {
             get
@@ -53,22 +54,81 @@ namespace Stardew_Manager
             }
         }
 
-        public int CalculateProfitForSeason(int startDay, int totalDays = 28)
+        /// <summary>Сколько дней занимает рост с учётом удобрения.</summary>
+        public int GetGrowthDays(Fertilizer? fertilizer)
         {
-            if (startDay + GrowthTime > totalDays)
+            double factor = fertilizer == null ? 1.0 : fertilizer.TimeFactor;
+            return Math.Max(1, (int)Math.Ceiling(GrowthTime * factor));
+        }
+
+        /// <summary>Сколько дней до повторного урожая с учётом удобрения (0 — культура не даёт повторных урожаев).</summary>
+        public int GetRegrowDays(Fertilizer? fertilizer)
+        {
+            if (!Regrows)
+                return 0;
+
+            double factor = fertilizer == null ? 1.0 : fertilizer.TimeFactor;
+            return Math.Max(1, (int)Math.Ceiling(RegrowTime * factor));
+        }
+
+        /// <summary>Средняя цена продажи одного плода с учётом качества, которое даёт удобрение.</summary>
+        public double GetExpectedUnitPrice(Fertilizer? fertilizer)
+        {
+            double qualityMultiplier = fertilizer == null ? 1.0 : fertilizer.QualityPriceMultiplier;
+            return SellPrice * qualityMultiplier;
+        }
+
+        /// <summary>Стоимость посадки одной грядки: семена + удобрение.</summary>
+        public int GetInvestmentPerPlot(Fertilizer? fertilizer)
+        {
+            int fertilizerCost = fertilizer == null ? 0 : fertilizer.CostPerTile;
+            return SeedPrice + fertilizerCost;
+        }
+
+        /// <summary>Сколько урожаев успеет дать культура, посаженная в startDay, до конца сезона.</summary>
+        public int GetHarvestCount(int startDay, int totalDays, Fertilizer? fertilizer)
+        {
+            int growthDays = GetGrowthDays(fertilizer);
+            if (startDay + growthDays > totalDays)
                 return 0;
 
             if (!Regrows)
-            {
-                double grossIncome = AvgYield * SellPrice;
-                return (int)Math.Floor(grossIncome) - SeedPrice;
-            }
-            else
-            {
-                int harvests = 1 + (int)Math.Floor((double)(totalDays - (startDay + GrowthTime)) / RegrowTime);
-                double grossIncome = harvests * AvgYield * SellPrice;
-                return (int)Math.Floor(grossIncome) - SeedPrice;
-            }
+                return 1;
+
+            int regrowDays = GetRegrowDays(fertilizer);
+            if (regrowDays <= 0)
+                regrowDays = 1;
+
+            return 1 + (totalDays - (startDay + growthDays)) / regrowDays;
+        }
+
+        /// <summary>Ожидаемая выручка с одной грядки за сезон (без вычета затрат).</summary>
+        public double CalculateExpectedRevenue(int startDay, int totalDays, Fertilizer? fertilizer)
+        {
+            int harvests = GetHarvestCount(startDay, totalDays, fertilizer);
+            if (harvests <= 0)
+                return 0.0;
+
+            return harvests * AvgYield * GetExpectedUnitPrice(fertilizer);
+        }
+
+        public int CalculateProfitForSeason(int startDay, int totalDays = 28)
+        {
+            return CalculateProfitForSeason(startDay, totalDays, null);
+        }
+
+        /// <summary>
+        /// Чистая прибыль с одной грядки за сезон с учётом затрат на семена и удобрение.
+        /// Возвращает 0, если культура не успевает дать урожай.
+        /// </summary>
+        public int CalculateProfitForSeason(int startDay, int totalDays, Fertilizer? fertilizer)
+        {
+            int harvests = GetHarvestCount(startDay, totalDays, fertilizer);
+            if (harvests <= 0)
+                return 0;
+
+            double revenue = harvests * AvgYield * GetExpectedUnitPrice(fertilizer);
+            return (int)Math.Floor(revenue) - GetInvestmentPerPlot(fertilizer);
         }
 
         public override bool Equals(object obj)
