@@ -15,14 +15,22 @@ namespace Stardew_Manager
             {
                 Size = new Size(1980, 1280),
                 BorderStyle = BorderStyle.None,
-                BackColor = Color.LightGray
+                BackColor = Color.FromArgb(243, 245, 248)
+            };
+
+            /* ---------------- Шапка ---------------- */
+            Panel panelStrip = new Panel
+            {
+                Size = new Size(1980, 120),
+                Location = new Point(0, 0),
+                BackColor = Color.FromArgb(226, 238, 249)
             };
 
             PictureBox pictureBox = new PictureBox
             {
                 Size = new Size(100, 100),
-                Location = new Point(10, 10),
-                SizeMode = PictureBoxSizeMode.StretchImage,
+                Location = new Point(12, 10),
+                SizeMode = PictureBoxSizeMode.Zoom,
                 BackColor = Color.Transparent
             };
 
@@ -39,167 +47,276 @@ namespace Stardew_Manager
                 }
             }
 
-            Panel panelStrip = new Panel
-            {
-                Size = new Size(1980, 120),
-                Location = new Point(0, 0),
-                BackColor = Color.LightBlue
-            };
-
             Label StardewManager = new Label
             {
                 Text = "Stardew Manager",
-                Location = new Point(120, 35),
+                Location = new Point(126, 20),
                 AutoSize = true,
-                Font = new Font("Arial", 24, FontStyle.Bold)
+                Font = new Font("Segoe UI", 22, FontStyle.Bold),
+                ForeColor = Color.FromArgb(30, 45, 60)
+            };
+
+            Label Subtitle = new Label
+            {
+                Text = "Планировщик посадок: сам подбирает культуры и удобрения под ваш бюджет",
+                Location = new Point(130, 72),
+                AutoSize = true,
+                Font = new Font("Segoe UI", 10, FontStyle.Regular),
+                ForeColor = Color.FromArgb(70, 90, 110)
             };
 
             Label Version = new Label
             {
-                Text = "0.6.1",
-                Location = new Point(1840, 10),
+                Text = "0.7.0",
+                Location = new Point(1840, 14),
                 AutoSize = true,
-                Font = new Font("Arial", 12, FontStyle.Bold)
+                Font = new Font("Segoe UI", 11, FontStyle.Bold),
+                ForeColor = Color.FromArgb(70, 90, 110)
+            };
+
+            panelStrip.Controls.Add(pictureBox);
+            panelStrip.Controls.Add(StardewManager);
+            panelStrip.Controls.Add(Subtitle);
+            panelStrip.Controls.Add(Version);
+
+            /* ---------------- Параметры ---------------- */
+            Panel paramsPanel = new Panel
+            {
+                Location = new Point(20, 140),
+                Size = new Size(470, 205),
+                BackColor = Color.White,
+                BorderStyle = BorderStyle.FixedSingle
+            };
+
+            Label paramsTitle = new Label
+            {
+                Text = "Параметры сезона",
+                Location = new Point(14, 10),
+                AutoSize = true,
+                Font = new Font("Segoe UI", 11, FontStyle.Bold),
+                ForeColor = Color.FromArgb(30, 45, 60)
             };
 
             SeasonLabel = new Label
             {
                 Text = "Сезон",
-                Location = new Point(20, 135),
+                Location = new Point(14, 52),
                 AutoSize = true,
-                Font = new Font("Arial", 12, FontStyle.Bold)
+                Font = new Font("Segoe UI", 10, FontStyle.Regular)
             };
 
             SeasonComboBox = new ComboBox
             {
-                Location = new Point(180, 135),
-                Size = new Size(100, 30),
+                Location = new Point(150, 48),
+                Size = new Size(300, 30),
                 DropDownStyle = ComboBoxStyle.DropDownList,
-                Font = new Font("Arial", 10, FontStyle.Regular)
+                Font = new Font("Segoe UI", 10, FontStyle.Regular)
             };
             SeasonComboBox.SelectedIndexChanged += OnSeasonChanged;
 
             Label Quantity = new Label
             {
-                Text = "Кол-во грядок",
-                Location = new Point(20, 170),
+                Text = "Количество грядок",
+                Location = new Point(14, 92),
                 AutoSize = true,
-                Font = new Font("Arial", 12, FontStyle.Bold)
+                Font = new Font("Segoe UI", 10, FontStyle.Regular)
             };
 
             QuantityTextBox = new TextBox
             {
-                Size = new Size(100, 40),
-                Location = new Point(180, 170),
+                Location = new Point(150, 88),
+                Size = new Size(120, 27),
                 Text = "20",
-                TextAlign = HorizontalAlignment.Center
+                TextAlign = HorizontalAlignment.Center,
+                Font = new Font("Segoe UI", 10, FontStyle.Regular)
             };
 
             Label MoneyQuantity = new Label
             {
-                Text = "Кол-во денег",
-                Location = new Point(20, 205),
+                Text = "Бюджет, g",
+                Location = new Point(14, 132),
                 AutoSize = true,
-                Font = new Font("Arial", 12, FontStyle.Bold)
+                Font = new Font("Segoe UI", 10, FontStyle.Regular)
             };
 
             MoneyQuantityTextBox = new TextBox
             {
-                Size = new Size(100, 40),
-                Location = new Point(180, 205),
+                Location = new Point(150, 128),
+                Size = new Size(120, 27),
                 Text = "1000",
-                TextAlign = HorizontalAlignment.Center
+                TextAlign = HorizontalAlignment.Center,
+                Font = new Font("Segoe UI", 10, FontStyle.Regular)
+            };
+
+            Label Hint = new Label
+            {
+                Text = "Удобрения — автоматически",
+                Location = new Point(285, 131),
+                AutoSize = true,
+                Font = new Font("Segoe UI", 8, FontStyle.Italic),
+                ForeColor = Color.FromArgb(120, 135, 150)
             };
 
             CalculateButton = new Button
             {
-                Text = "Рассчитать",
-                Location = new Point(20, 245),
-                Size = new Size(120, 30),
-                Font = new Font("Arial", 10, FontStyle.Bold),
-                BackColor = Color.White
+                Text = "Рассчитать план",
+                Location = new Point(14, 162),
+                Size = new Size(436, 32),
+                Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                BackColor = Color.FromArgb(226, 240, 226),
+                FlatStyle = FlatStyle.Flat
             };
+            CalculateButton.FlatAppearance.BorderColor = Color.FromArgb(180, 205, 180);
             CalculateButton.Click += OnCalculateButtonClick;
 
-            Label FertilizerLabel = new Label
-            {
-                Text = "Удобрение",
-                Location = new Point(350, 135),
-                AutoSize = true,
-                Font = new Font("Arial", 12, FontStyle.Bold)
-            };
+            paramsPanel.Controls.Add(paramsTitle);
+            paramsPanel.Controls.Add(SeasonLabel);
+            paramsPanel.Controls.Add(SeasonComboBox);
+            paramsPanel.Controls.Add(Quantity);
+            paramsPanel.Controls.Add(QuantityTextBox);
+            paramsPanel.Controls.Add(MoneyQuantity);
+            paramsPanel.Controls.Add(MoneyQuantityTextBox);
+            paramsPanel.Controls.Add(Hint);
+            paramsPanel.Controls.Add(CalculateButton);
 
-            FertilizerComboBox = new ComboBox
+            /* ---------------- Итоги ---------------- */
+            Panel summaryPanel = new Panel
             {
-                Location = new Point(480, 135),
-                Size = new Size(260, 30),
-                DropDownStyle = ComboBoxStyle.DropDownList,
-                Font = new Font("Arial", 10, FontStyle.Regular)
-            };
-
-            CompareFertilizersButton = new Button
-            {
-                Text = "Сравнить удобрения",
-                Location = new Point(350, 175),
-                Size = new Size(260, 32),
-                Font = new Font("Arial", 10, FontStyle.Bold),
+                Location = new Point(500, 140),
+                Size = new Size(1460, 205),
                 BackColor = Color.White,
-                Enabled = false
+                BorderStyle = BorderStyle.FixedSingle
             };
-            CompareFertilizersButton.Click += OnCompareFertilizersClick;
+
+            Label summaryTitle = new Label
+            {
+                Text = "Итоги плана",
+                Location = new Point(14, 10),
+                AutoSize = true,
+                Font = new Font("Segoe UI", 11, FontStyle.Bold),
+                ForeColor = Color.FromArgb(30, 45, 60)
+            };
 
             ResultSummaryLabel = new Label
             {
-                Text = "",
-                Location = new Point(350, 215),
-                MaximumSize = new Size(1400, 0),
+                Text = "Выберите сезон, укажите грядки и бюджет, затем нажмите «Рассчитать план».\r\n"
+                     + "Программа сама решит, какие культуры сажать и на какие из них стоит тратиться на удобрения.",
+                Location = new Point(14, 44),
+                MaximumSize = new Size(1430, 0),
                 AutoSize = true,
-                Font = new Font("Arial", 11, FontStyle.Bold),
-                ForeColor = Color.DarkGreen
+                Font = new Font("Segoe UI", 10, FontStyle.Regular),
+                ForeColor = Color.FromArgb(40, 60, 50)
             };
 
-            FertilizerSummaryLabel = new Label
+            Label Legend = new Label
+            {
+                Text = "Как считаем: ускорение удобрения действует только до первого урожая, качество — на все сборы; "
+                     + "цена удобрения берётся по самому дешёвому способу (покупка или крафт). Все суммы — в золоте (g).",
+                Location = new Point(14, 168),
+                MaximumSize = new Size(1430, 0),
+                AutoSize = true,
+                Font = new Font("Segoe UI", 8, FontStyle.Italic),
+                ForeColor = Color.FromArgb(130, 145, 160)
+            };
+
+            summaryPanel.Controls.Add(summaryTitle);
+            summaryPanel.Controls.Add(ResultSummaryLabel);
+            summaryPanel.Controls.Add(Legend);
+
+            /* ---------------- Вкладки с таблицами ---------------- */
+            ResultTabs = new TabControl
+            {
+                Location = new Point(20, 350),
+                Size = new Size(1900, 380),
+                Font = new Font("Segoe UI", 10, FontStyle.Bold)
+            };
+
+            CatalogTab = new TabPage("Культуры сезона")
+            {
+                BackColor = Color.White,
+                Padding = new Padding(0)
+            };
+
+            PlanTab = new TabPage("План посадок")
+            {
+                BackColor = Color.White,
+                Padding = new Padding(0)
+            };
+
+            CatalogGrid = CreateGrid();
+            Data = CreateGrid();
+
+            CatalogTab.Controls.Add(CatalogGrid);
+            PlanTab.Controls.Add(Data);
+
+            ResultTabs.TabPages.Add(CatalogTab);
+            ResultTabs.TabPages.Add(PlanTab);
+
+            /* ---------------- Автоанализ ---------------- */
+            Label analysisTitle = new Label
+            {
+                Text = "Автоматический анализ удобрений",
+                Location = new Point(20, 742),
+                AutoSize = true,
+                Font = new Font("Segoe UI", 11, FontStyle.Bold),
+                ForeColor = Color.FromArgb(30, 45, 60)
+            };
+
+            RecommendationLabel = new Label
             {
                 Text = "",
-                Location = new Point(20, 720),
+                Location = new Point(20, 774),
                 MaximumSize = new Size(1900, 0),
                 AutoSize = true,
-                Font = new Font("Arial", 10, FontStyle.Bold),
-                ForeColor = Color.DarkSlateBlue
+                Font = new Font("Segoe UI", 9, FontStyle.Regular),
+                ForeColor = Color.FromArgb(60, 70, 110)
             };
-
-            Data = new DataGridView()
-            {
-                Size = new Size(1900, 420),
-                Location = new Point(20, 290),
-                BorderStyle = BorderStyle.FixedSingle,
-                BackgroundColor = Color.White,
-                AllowUserToAddRows = false,
-                ReadOnly = true,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells
-            };
-
-            panelStrip.Controls.Add(pictureBox);
-            panelStrip.Controls.Add(StardewManager);
-            panelStrip.Controls.Add(Version);
 
             cardPanel.Controls.Add(panelStrip);
-            cardPanel.Controls.Add(SeasonLabel);
-            cardPanel.Controls.Add(SeasonComboBox);
-            cardPanel.Controls.Add(Quantity);
-            cardPanel.Controls.Add(QuantityTextBox);
-            cardPanel.Controls.Add(MoneyQuantity);
-            cardPanel.Controls.Add(MoneyQuantityTextBox);
-            cardPanel.Controls.Add(CalculateButton);
-            cardPanel.Controls.Add(FertilizerLabel);
-            cardPanel.Controls.Add(FertilizerComboBox);
-            cardPanel.Controls.Add(CompareFertilizersButton);
-            cardPanel.Controls.Add(ResultSummaryLabel);
-            cardPanel.Controls.Add(Data);
-            cardPanel.Controls.Add(FertilizerSummaryLabel);
+            cardPanel.Controls.Add(paramsPanel);
+            cardPanel.Controls.Add(summaryPanel);
+            cardPanel.Controls.Add(ResultTabs);
+            cardPanel.Controls.Add(analysisTitle);
+            cardPanel.Controls.Add(RecommendationLabel);
 
             this.Controls.Add(cardPanel);
+            this.AutoScroll = true;
             this.WindowState = FormWindowState.Maximized;
+        }
+
+        /// <summary>Единый стиль для обеих таблиц.</summary>
+        private static DataGridView CreateGrid()
+        {
+            var grid = new DataGridView
+            {
+                Dock = DockStyle.Fill,
+                BorderStyle = BorderStyle.None,
+                BackgroundColor = Color.White,
+                AllowUserToAddRows = false,
+                AllowUserToDeleteRows = false,
+                AllowUserToResizeRows = false,
+                ReadOnly = true,
+                RowHeadersVisible = false,
+                MultiSelect = false,
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells,
+                ColumnHeadersHeight = 38,
+                ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
+                EnableHeadersVisualStyles = false,
+                GridColor = Color.FromArgb(225, 230, 235),
+                Font = new Font("Segoe UI", 10, FontStyle.Regular),
+                RowTemplate = { Height = 34 }
+            };
+
+            grid.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(238, 243, 248);
+            grid.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 10, FontStyle.Bold);
+            grid.ColumnHeadersDefaultCellStyle.Padding = new Padding(6, 0, 6, 0);
+            grid.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(249, 251, 253);
+            grid.DefaultCellStyle.SelectionBackColor = Color.FromArgb(206, 228, 248);
+            grid.DefaultCellStyle.SelectionForeColor = Color.Black;
+            grid.DefaultCellStyle.Padding = new Padding(6, 0, 6, 0);
+
+            return grid;
         }
 
         protected override void Dispose(bool disposing)

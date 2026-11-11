@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -10,25 +11,30 @@ namespace Stardew_Manager
     public partial class Form1 : Form
     {
         private DataGridView Data;
+        private DataGridView CatalogGrid;
+        private TabControl ResultTabs;
+        private TabPage CatalogTab;
+        private TabPage PlanTab;
         private TextBox QuantityTextBox;
         private TextBox MoneyQuantityTextBox;
         private Button CalculateButton;
-        private Button CompareFertilizersButton;
         private Label ResultSummaryLabel;
-        private Label FertilizerSummaryLabel;
+        private Label RecommendationLabel;
         private ComboBox SeasonComboBox;
-        private ComboBox FertilizerComboBox;
         private Label SeasonLabel;
 
         private List<Crop> _availableCrops = new List<Crop>();
         private List<Fertilizer> _fertilizers = new List<Fertilizer>();
+        private readonly Dictionary<string, Image> _iconCache = new Dictionary<string, Image>();
         private readonly DatabaseService _dbService;
+        private string _currentSeason = string.Empty;
 
         public Form1()
         {
             InitializeCustomCard();
 
             _dbService = new DatabaseService(ConnectionStringProvider.Get());
+            CatalogGrid.CellFormatting += OnCatalogCellFormatting;
             this.Load += OnFormLoad;
         }
 
@@ -55,32 +61,14 @@ namespace Stardew_Manager
             {
                 _fertilizers = await _dbService.GetFertilizersAsync();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                // Даже если таблицы удобрений недоступны, приложение должно работать.
+                // Таблицы удобрений недоступны — считаем без них, приложение продолжает работать.
                 _fertilizers = new List<Fertilizer>();
-                MessageBox.Show($"Не удалось загрузить удобрения: {ex.Message}", "Удобрения",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
 
-            // Если в базе нет «пустого» удобрения, добавляем его сами — иначе не с чем сравнивать.
             if (!_fertilizers.Any(IsNeutralFertilizer))
                 _fertilizers.Insert(0, Fertilizer.CreateNone());
-
-            FertilizerComboBox.Items.Clear();
-            FertilizerComboBox.Items.Add(new Fertilizer
-            {
-                Id = -1,
-                Name = "Авто (подбор)",
-                PurchasePrice = 0,
-                GrowthMultiplier = 1.0
-            });
-
-            foreach (var fertilizer in _fertilizers)
-                FertilizerComboBox.Items.Add(fertilizer);
-
-            FertilizerComboBox.SelectedIndex = 0;
-            CompareFertilizersButton.Enabled = true;
         }
 
         private async Task LoadSeasonsAsync()
@@ -95,14 +83,11 @@ namespace Stardew_Manager
                 SeasonComboBox.Items.Clear();
 
                 foreach (var season in seasons)
-                {
                     SeasonComboBox.Items.Add(season);
-                }
 
                 if (SeasonComboBox.Items.Count > 0)
                 {
                     SeasonComboBox.SelectedIndex = 0;
-
                     await LoadDataForSelectedSeasonAsync(SeasonComboBox.SelectedItem.ToString());
                 }
 
@@ -122,9 +107,7 @@ namespace Stardew_Manager
         private async void OnSeasonChanged(object sender, EventArgs e)
         {
             if (SeasonComboBox.SelectedItem != null)
-            {
                 await LoadDataForSelectedSeasonAsync(SeasonComboBox.SelectedItem.ToString());
-            }
         }
 
         private async Task LoadDataForSelectedSeasonAsync(string selectedSeason)
@@ -132,9 +115,18 @@ namespace Stardew_Manager
             try
             {
                 CalculateButton.Enabled = false;
+
+                _currentSeason = selectedSeason;
                 _availableCrops = await _dbService.GetCropsBySeasonAsync(selectedSeason);
-                DisplayInitialCrops();
-                FertilizerSummaryLabel.Text = string.Empty;
+
+                var analysis = _availableCrops.Count > 0 && _fertilizers.Any(f => f.HasAnyEffect)
+                    ? FertilizerAnalyzer.Analyze(_availableCrops, _fertilizers)
+                    : null;
+
+                DisplayCatalog(analysis);
+                UpdateRecommendations(analysis);
+                ShowPlanHint();
+                ResultTabs.SelectedTab = CatalogTab;
             }
             catch (Exception ex)
             {
@@ -147,19 +139,292 @@ namespace Stardew_Manager
             }
         }
 
-        private void DisplayInitialCrops()
+        /// <summary>Каталог культур сезона: базовая экономика и лучшее удобрение для каждой.</summary>
+        private void DisplayCatalog(FertilizerAnalysisResult? analysis)
         {
+            var bestByCrop = new Dictionary<string, FertilizerComparisonRow>();
+
+            if (analysis != null)
+            {
+                foreach (var group in analysis.Rows
+                             .Where(r => !r.IsBaseline && r.DeltaVsNoFertilizer > 0)
+                             .GroupBy(r => r.CropName))
+                {
+                    bestByCrop[group.Key] = group.OrderByDescending(r => r.DeltaVsNoFertilizer).First();
+                }
+            }
+
             DataTable table = new DataTable();
             table.Columns.Add("Иконка", typeof(Image));
-            table.Columns.Add("Название культуры", typeof(string));
+            table.Columns.Add("Культура", typeof(string));
+            table.Columns.Add("Семена (g)", typeof(int));
+            table.Columns.Add("Цена плода (g)", typeof(int));
+            table.Columns.Add("Дней до урожая", typeof(int));
+            table.Columns.Add("Урожаев за сезон", typeof(int));
+            table.Columns.Add("Прибыль без удобрений (g)", typeof(int));
+            table.Columns.Add("Лучшее удобрение", typeof(string));
+            table.Columns.Add("Прибыль с удобрением (g)", typeof(int));
+            table.Columns.Add("Прирост (g)", typeof(int));
 
             foreach (var crop in _availableCrops)
             {
-                table.Rows.Add(crop.Icon, crop.Name);
+                int baseProfit = crop.CalculateProfitForSeason(1, OptimizationService.SeasonLength);
+
+                bestByCrop.TryGetValue(crop.Name, out FertilizerComparisonRow? best);
+
+                table.Rows.Add(
+                    GetIcon(crop),
+                    crop.Name,
+                    crop.SeedPrice,
+                    crop.SellPrice,
+                    crop.GetGrowthDays(null),
+                    crop.GetHarvestCount(1, OptimizationService.SeasonLength, null),
+                    baseProfit,
+                    best != null ? best.FertilizerName : "—",
+                    best != null ? best.ProfitPerPlot : baseProfit,
+                    best != null ? best.DeltaVsNoFertilizer : 0);
+            }
+
+            CatalogGrid.DataSource = table;
+            ApplyGridFormatting(CatalogGrid);
+        }
+
+        /// <summary>Подсказка в блоке итогов, пока план не рассчитан.</summary>
+        private void ShowPlanHint()
+        {
+            Data.DataSource = null;
+
+            if (_availableCrops.Count == 0)
+            {
+                ResultSummaryLabel.Text = $"В сезоне «{_currentSeason}» в базе нет культур — сажать нечего.";
+                return;
+            }
+
+            ResultSummaryLabel.Text =
+                $"Сезон «{_currentSeason}»: {_availableCrops.Count} культур. " +
+                "Укажите количество грядок и бюджет, затем нажмите «Рассчитать план» —\r\n" +
+                "программа сама выберет, что сажать, и на какие культуры стоит покупать удобрения.";
+        }
+
+        /// <summary>Автоматический вывод по удобрениям для культур текущего сезона.</summary>
+        private void UpdateRecommendations(FertilizerAnalysisResult? analysis)
+        {
+            if (_availableCrops.Count == 0)
+            {
+                RecommendationLabel.Text = "Нет культур для анализа.";
+                return;
+            }
+
+            var effective = _fertilizers.Where(f => f.HasAnyEffect).ToList();
+            if (effective.Count == 0 || analysis == null)
+            {
+                RecommendationLabel.Text = "В базе нет удобрений с эффектом — план считается без них.";
+                return;
+            }
+
+            var lines = new List<string>();
+            lines.Add($"Проанализировано {_availableCrops.Count} культур сезона «{_currentSeason}» " +
+                      $"и {effective.Count} удобрений (посадка в 1-й день, 28 дней сезона).");
+
+            var bestPerCrop = analysis.Rows
+                .Where(r => !r.IsBaseline && r.DeltaVsNoFertilizer > 0)
+                .GroupBy(r => r.CropName)
+                .Select(g => g.OrderByDescending(r => r.DeltaVsNoFertilizer).First())
+                .OrderByDescending(r => r.DeltaVsNoFertilizer)
+                .ToList();
+
+            if (bestPerCrop.Count == 0)
+            {
+                lines.Add("Ни одно удобрение не окупается на культурах этого сезона — программа посадит без удобрений.");
+            }
+            else
+            {
+                lines.Add($"Удобрения окупаются на {bestPerCrop.Count} из {_availableCrops.Count} культур. Лучшие варианты:");
+
+                foreach (var row in bestPerCrop.Take(3))
+                {
+                    lines.Add($"    • {row.CropName} + {row.FertilizerName}: +{row.DeltaVsNoFertilizer:N0} g с грядки " +
+                              $"({row.CostSource}, {row.FertilizerCost:N0} g)");
+                }
+            }
+
+            var useless = effective
+                .Where(f => !analysis.Rows.Any(r => !r.IsBaseline
+                                                    && r.FertilizerName == f.Name
+                                                    && r.DeltaVsNoFertilizer > 0))
+                .Select(f => f.Name)
+                .ToList();
+
+            if (useless.Count > 0)
+                lines.Add($"Не окупаются нигде в этом сезоне: {string.Join(", ", useless)}.");
+
+            RecommendationLabel.Text = string.Join("\r\n", lines);
+        }
+
+        private void OnCalculateButtonClick(object sender, EventArgs e)
+        {
+            if (!int.TryParse(QuantityTextBox.Text, out int plots) || plots <= 0)
+            {
+                MessageBox.Show("Введите корректное количество грядок (целое число больше 0).",
+                    "Внимание", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                QuantityTextBox.Focus();
+                return;
+            }
+
+            if (!int.TryParse(MoneyQuantityTextBox.Text, out int money) || money <= 0)
+            {
+                MessageBox.Show("Введите корректный бюджет (целое число больше 0).",
+                    "Внимание", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MoneyQuantityTextBox.Focus();
+                return;
+            }
+
+            if (_availableCrops.Count == 0)
+            {
+                MessageBox.Show($"В сезоне «{_currentSeason}» нет культур в базе.", "Внимание",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            var fertilizers = BuildFertilizerOptions();
+            var plan = OptimizationService.CalculateBestPlan(_availableCrops, money, plots, fertilizers);
+
+            DisplayPlan(plan);
+            UpdateSummary(plan, money, plots);
+            ResultTabs.SelectedTab = PlanTab;
+        }
+
+        private void DisplayPlan(OptimizationService.PlanResult plan)
+        {
+            DataTable table = new DataTable();
+            table.Columns.Add("Иконка", typeof(Image));
+            table.Columns.Add("День", typeof(int));
+            table.Columns.Add("Культура", typeof(string));
+            table.Columns.Add("Удобрение", typeof(string));
+            table.Columns.Add("Грядок", typeof(int));
+            table.Columns.Add("Семена (g)", typeof(int));
+            table.Columns.Add("Удобрение (g)", typeof(int));
+            table.Columns.Add("Итого (g)", typeof(int));
+
+            foreach (var planting in plan.Schedule)
+            {
+                var crop = _availableCrops.Find(c => c.Name == planting.CropName);
+
+                table.Rows.Add(
+                    GetIcon(crop),
+                    planting.Day,
+                    planting.CropName,
+                    planting.FertilizerName,
+                    planting.Quantity,
+                    planting.SeedCost,
+                    planting.FertilizerCost,
+                    planting.Cost);
             }
 
             Data.DataSource = table;
-            ConfigureGridImageColumn();
+            ApplyGridFormatting(Data);
+        }
+
+        private void UpdateSummary(OptimizationService.PlanResult plan, int money, int plots)
+        {
+            var neutralPlan = OptimizationService.CalculateBestPlan(_availableCrops, money, plots,
+                new List<Fertilizer> { GetNeutralFertilizer() });
+
+            int invested = plan.TotalSpentOnSeeds + plan.TotalSpentOnFertilizer;
+            double roi = invested > 0 ? (double)plan.TotalNetProfit / invested * 100.0 : 0.0;
+            int plants = plan.Schedule.Sum(s => s.Quantity);
+            int fertilizerDelta = plan.TotalNetProfit - neutralPlan.TotalNetProfit;
+
+            if (plan.Schedule.Count == 0)
+            {
+                ResultSummaryLabel.Text =
+                    $"План пуст: бюджета {money:N0} g не хватает даже на самые дешёвые семена.";
+                return;
+            }
+
+            var lines = new List<string>();
+
+            lines.Add($"Затраты: семена {plan.TotalSpentOnSeeds:N0} g · удобрения {plan.TotalSpentOnFertilizer:N0} g " +
+                      $"· всего {invested:N0} g");
+
+            string roiText = roi >= 0 ? $"+{roi:0}%" : $"{roi:0}%";
+            lines.Add($"Баланс в конце сезона: {plan.FinalMoney:N0} g · чистая прибыль {plan.TotalNetProfit:N0} g " +
+                      $"({roiText} к вложению)");
+
+            if (plan.TotalSpentOnFertilizer > 0)
+            {
+                lines.Add($"Удобрения дают {fertilizerDelta:+#,0;-#,0;0} g к плану без удобрений " +
+                          $"(без них было бы {neutralPlan.TotalNetProfit:N0} g)");
+            }
+            else
+            {
+                lines.Add($"Удобрения не использованы: в этом плане они не увеличивают прибыль " +
+                          $"(план без них — {neutralPlan.TotalNetProfit:N0} g).");
+            }
+
+            lines.Add($"Растений по плану: {plants} · культур: {plan.TotalPlantedSummary.Count} " +
+                      $"· грядок в наличии: {plots}");
+
+            ResultSummaryLabel.Text = string.Join("\r\n", lines);
+        }
+
+        private void OnCatalogCellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.CellStyle == null || e.ColumnIndex < 0 || e.ColumnIndex >= CatalogGrid.Columns.Count)
+                return;
+
+            string columnName = CatalogGrid.Columns[e.ColumnIndex].Name;
+
+            if (columnName == "Прибыль без удобрений (g)" && e.Value is int profit && profit < 0)
+                e.CellStyle.ForeColor = Color.DarkRed;
+
+            if (columnName == "Прирост (g)" && e.Value is int delta)
+            {
+                if (delta > 0)
+                    e.CellStyle.ForeColor = Color.DarkGreen;
+                else if (delta == 0)
+                    e.CellStyle.ForeColor = Color.Gray;
+            }
+        }
+
+        private static void ApplyGridFormatting(DataGridView grid)
+        {
+            foreach (DataGridViewColumn column in grid.Columns)
+            {
+                if (column is DataGridViewImageColumn imageColumn)
+                {
+                    imageColumn.ImageLayout = DataGridViewImageCellLayout.Zoom;
+                    imageColumn.Width = 44;
+                    column.SortMode = DataGridViewColumnSortMode.NotSortable;
+                    continue;
+                }
+
+                column.SortMode = DataGridViewColumnSortMode.Automatic;
+
+                if (column.ValueType == typeof(int) || column.ValueType == typeof(double))
+                {
+                    column.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+                    column.DefaultCellStyle.Format = column.ValueType == typeof(double) ? "N2" : "N0";
+                }
+                else
+                {
+                    column.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
+                }
+            }
+        }
+
+        /// <summary>Иконки кэшируются: Image.FromFile на каждый показ — это утечка GDI-хэндлов.</summary>
+        private Image GetIcon(Crop crop)
+        {
+            if (crop == null || string.IsNullOrWhiteSpace(crop.ImageName))
+                return null;
+
+            if (_iconCache.TryGetValue(crop.ImageName, out Image cached))
+                return cached;
+
+            Image image = crop.Icon;
+            _iconCache[crop.ImageName] = image;
+            return image;
         }
 
         /// <summary>«Пустое» удобрение: бесплатное и без ускорения роста — база для сравнения.</summary>
@@ -174,171 +439,14 @@ namespace Stardew_Manager
             return neutral ?? Fertilizer.CreateNone();
         }
 
-        /// <summary>
-        /// Какие удобрения учитывать в плане: «авто» — все, конкретное — выбранное
-        /// (планировщик применит его там, где это выгодно, иначе оставит грядку без удобрения).
-        /// </summary>
-        private List<Fertilizer> GetFertilizersForPlan()
+        /// <summary>Планировщик перебирает все удобрения и сам решает, где они окупаются.</summary>
+        private List<Fertilizer> BuildFertilizerOptions()
         {
-            var selected = FertilizerComboBox.SelectedItem as Fertilizer;
+            var list = new List<Fertilizer>(_fertilizers);
+            if (!list.Any(IsNeutralFertilizer))
+                list.Add(Fertilizer.CreateNone());
 
-            if (selected == null || selected.Id == -1)
-            {
-                var list = new List<Fertilizer>(_fertilizers);
-                if (!list.Any(IsNeutralFertilizer))
-                    list.Add(Fertilizer.CreateNone());
-
-                return list;
-            }
-
-            if (IsNeutralFertilizer(selected))
-                return new List<Fertilizer> { selected };
-
-            return new List<Fertilizer> { selected, GetNeutralFertilizer() };
-        }
-
-        private void OnCalculateButtonClick(object sender, EventArgs e)
-        {
-            if (!int.TryParse(QuantityTextBox.Text, out int plots) || plots <= 0)
-            {
-                MessageBox.Show("Введите корректное количество грядок!", "Внимание",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            if (!int.TryParse(MoneyQuantityTextBox.Text, out int money) || money <= 0)
-            {
-                MessageBox.Show("Введите корректное количество денег!", "Внимание",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            if (_availableCrops.Count == 0)
-            {
-                MessageBox.Show("Для выбранного сезона нет культур в базе.", "Внимание",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            var fertilizers = GetFertilizersForPlan();
-            var result = OptimizationService.CalculateBestPlan(_availableCrops, money, plots, fertilizers);
-
-            DataTable scheduleTable = new DataTable();
-            scheduleTable.Columns.Add("День сезона", typeof(string));
-            scheduleTable.Columns.Add("Иконка", typeof(Image));
-            scheduleTable.Columns.Add("Культура", typeof(string));
-            scheduleTable.Columns.Add("Удобрение", typeof(string));
-            scheduleTable.Columns.Add("Количество (шт)", typeof(int));
-            scheduleTable.Columns.Add("Семена (g)", typeof(int));
-            scheduleTable.Columns.Add("Удобрение (g)", typeof(int));
-            scheduleTable.Columns.Add("Затраты (g)", typeof(int));
-
-            foreach (var planting in result.Schedule)
-            {
-                var cropObj = _availableCrops.Find(c => c.Name == planting.CropName);
-                Image icon = cropObj?.Icon;
-
-                scheduleTable.Rows.Add($"День {planting.Day}", icon, planting.CropName,
-                    planting.FertilizerName, planting.Quantity, planting.SeedCost,
-                    planting.FertilizerCost, planting.Cost);
-            }
-
-            Data.DataSource = scheduleTable;
-            ConfigureGridImageColumn();
-
-            string summary = $"Семена: {result.TotalSpentOnSeeds}g | Удобрения: {result.TotalSpentOnFertilizer}g | " +
-                             $"Баланс в конце: {result.FinalMoney}g | Чистая прибыль: {result.TotalNetProfit}g";
-
-            var chosen = FertilizerComboBox.SelectedItem as Fertilizer;
-            bool autoMode = chosen == null || chosen.Id == -1;
-
-            var withoutFertilizer = OptimizationService.CalculateBestPlan(_availableCrops, money, plots,
-                new List<Fertilizer> { GetNeutralFertilizer() });
-            int delta = result.TotalNetProfit - withoutFertilizer.TotalNetProfit;
-            string sign = delta >= 0 ? "+" : string.Empty;
-
-            summary += $"\r\nПлан без удобрений: {withoutFertilizer.TotalNetProfit}g → " +
-                       $"удобрения дают {sign}{delta}g";
-
-            if (!autoMode && chosen != null && !IsNeutralFertilizer(chosen) && result.TotalSpentOnFertilizer == 0)
-                summary += " (выбранное удобрение не окупается — план построен без него)";
-
-            ResultSummaryLabel.Text = summary;
-            FertilizerSummaryLabel.Text = string.Empty;
-        }
-
-        private void OnCompareFertilizersClick(object sender, EventArgs e)
-        {
-            if (_availableCrops.Count == 0)
-            {
-                MessageBox.Show("Сначала выберите сезон: культуры ещё не загружены.", "Внимание",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            var fertilizers = _fertilizers.Where(f => f.HasAnyEffect).ToList();
-            if (fertilizers.Count == 0)
-            {
-                MessageBox.Show("В базе нет удобрений с эффектом (таблица Fertilizers пуста или недоступна).",
-                    "Внимание", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            var analysis = FertilizerAnalyzer.Analyze(_availableCrops, fertilizers);
-
-            DataTable table = new DataTable();
-            table.Columns.Add("Культура", typeof(string));
-            table.Columns.Add("Удобрение", typeof(string));
-            table.Columns.Add("Дней до урожая", typeof(int));
-            table.Columns.Add("Урожаев за сезон", typeof(int));
-            table.Columns.Add("Ср. цена шт (g)", typeof(double));
-            table.Columns.Add("Выручка с грядки (g)", typeof(double));
-            table.Columns.Add("Затраты (g)", typeof(int));
-            table.Columns.Add("Способ", typeof(string));
-            table.Columns.Add("Прибыль с грядки (g)", typeof(int));
-            table.Columns.Add("Δ к «без удобрения»", typeof(int));
-            table.Columns.Add("Вердикт", typeof(string));
-
-            foreach (var row in analysis.Rows)
-            {
-                table.Rows.Add(row.CropName, row.FertilizerName, row.GrowthDays, row.Harvests,
-                    Math.Round(row.ExpectedUnitPrice, 2), Math.Round(row.RevenuePerPlot, 1),
-                    row.InvestmentPerPlot, row.CostSource, row.ProfitPerPlot,
-                    row.DeltaVsNoFertilizer, row.Verdict);
-            }
-
-            Data.DataSource = table;
-            ConfigureGridImageColumn();
-
-            int plots = int.TryParse(QuantityTextBox.Text, out int parsedPlots) && parsedPlots > 0 ? parsedPlots : 1;
-
-            var lines = new List<string>();
-            lines.Add($"Сравнение удобрений: сезон 28 дней, посадка в день 1, {plots} грядок.");
-
-            foreach (var recommendation in analysis.Recommendations.Take(3))
-                lines.Add("• " + recommendation);
-
-            if (analysis.Recommendations.Count == 0)
-                lines.Add("• Ни одно удобрение из базы не окупается на этих культурах.");
-
-            int totalDelta = FertilizerAnalyzer.CalculateTotalDelta(analysis, plots);
-            if (totalDelta > 0)
-            {
-                lines.Add($"Лучший вариант на {plots} грядок: {analysis.BestCropName} + " +
-                          $"{analysis.BestFertilizerName} → +{totalDelta}g за сезон.");
-            }
-
-            lines.Add(analysis.Summary);
-            FertilizerSummaryLabel.Text = string.Join("\r\n", lines);
-        }
-
-        private void ConfigureGridImageColumn()
-        {
-            if (Data.Columns.Contains("Иконка") && Data.Columns["Иконка"] is DataGridViewImageColumn imageColumn)
-            {
-                imageColumn.ImageLayout = DataGridViewImageCellLayout.Zoom;
-                imageColumn.Width = 40;
-            }
+            return list;
         }
     }
 }

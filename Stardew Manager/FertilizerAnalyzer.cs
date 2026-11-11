@@ -14,6 +14,7 @@ namespace Stardew_Manager
         public double ExpectedUnitPrice { get; set; }
         public double RevenuePerPlot { get; set; }
         public int InvestmentPerPlot { get; set; }
+        public int FertilizerCost { get; set; }
         public int ProfitPerPlot { get; set; }
         public int DeltaVsNoFertilizer { get; set; }
         public string Verdict { get; set; } = string.Empty;
@@ -153,6 +154,7 @@ namespace Stardew_Manager
                 ExpectedUnitPrice = crop.GetExpectedUnitPrice(fertilizer),
                 RevenuePerPlot = crop.CalculateExpectedRevenue(startDay, totalDays, fertilizer),
                 InvestmentPerPlot = crop.GetInvestmentPerPlot(fertilizer),
+                FertilizerCost = fertilizer.CostPerTile,
                 ProfitPerPlot = profit,
                 DeltaVsNoFertilizer = delta,
                 Verdict = verdict,
