@@ -61,14 +61,17 @@ namespace Stardew_Manager
             return Math.Max(1, (int)Math.Ceiling(GrowthTime * factor));
         }
 
-        /// <summary>Сколько дней до повторного урожая с учётом удобрения (0 — культура не даёт повторных урожаев).</summary>
+        /// <summary>
+        /// Сколько дней до повторного урожая (0 — культура не даёт повторных урожаев).
+        /// Удобрение ускоряет только созревание до первого урожая, поэтому Regrow_Time не меняется.
+        /// Параметр оставлен для единообразия вызовов.
+        /// </summary>
         public int GetRegrowDays(Fertilizer? fertilizer)
         {
             if (!Regrows)
                 return 0;
 
-            double factor = fertilizer == null ? 1.0 : fertilizer.TimeFactor;
-            return Math.Max(1, (int)Math.Ceiling(RegrowTime * factor));
+            return Math.Max(1, RegrowTime);
         }
 
         /// <summary>Средняя цена продажи одного плода с учётом качества, которое даёт удобрение.</summary>

@@ -67,6 +67,7 @@ namespace Stardew_Manager
         /// <summary>
         /// Значение колонки Growth_Multiplier.
         /// Трактовка: множитель времени роста. 0.90 — рост быстрее на 10%, 0.75 — на 25%.
+        /// Влияет только на созревание до первого урожая; период повторного плодоношения не меняется.
         /// Если в базе лежит множитель скорости (&gt; 1), он автоматически переводится во время (см. TimeFactor).
         /// </summary>
         public double GrowthMultiplier { get; set; } = 1.0;
@@ -91,7 +92,10 @@ namespace Stardew_Manager
             get { return Id == 0; }
         }
 
-        /// <summary>Множитель времени роста: 0.75 → культура растёт за 75% дней.</summary>
+        /// <summary>
+        /// Множитель времени до первого урожая: 0.75 → культура созревает за 75% дней.
+        /// На Regrow_Time не распространяется.
+        /// </summary>
         public double TimeFactor
         {
             get
@@ -192,7 +196,7 @@ namespace Stardew_Manager
                 var parts = new List<string>();
 
                 if (HasGrowthEffect)
-                    parts.Add($"рост быстрее на {(1.0 - TimeFactor) * 100.0:0.#}%");
+                    parts.Add($"первый урожай раньше на {(1.0 - TimeFactor) * 100.0:0.#}%");
 
                 if (HasQualityEffect)
                     parts.Add($"ср. цена x{QualityPriceMultiplier:0.###}");
