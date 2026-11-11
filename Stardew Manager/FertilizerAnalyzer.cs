@@ -17,6 +17,7 @@ namespace Stardew_Manager
         public int ProfitPerPlot { get; set; }
         public int DeltaVsNoFertilizer { get; set; }
         public string Verdict { get; set; } = string.Empty;
+        public string CostSource { get; set; } = string.Empty;
         public bool IsBaseline { get; set; }
     }
 
@@ -155,6 +156,7 @@ namespace Stardew_Manager
                 ProfitPerPlot = profit,
                 DeltaVsNoFertilizer = delta,
                 Verdict = verdict,
+                CostSource = fertilizer.CostSource,
                 IsBaseline = baseline
             };
         }

@@ -73,12 +73,12 @@ namespace Stardew_Manager
                             Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Seasons PRIMARY KEY,
                             Season_Name NVARCHAR(20) NOT NULL,
                             CONSTRAINT UQ_Seasons_Season_Name UNIQUE (Season_Name),
-                            CONSTRAINT CHK_Seasons_Season_Name CHECK (Season_Name IN (N'Spring', N'Summer', N'Fall', N'Winter'))
+                            CONSTRAINT CHK_Seasons_Season_Name CHECK (Season_Name IN (N'Spring', N'Summer', N'Autumn', N'Fall', N'Winter'))
                         );
                     END;
 
                     IF NOT EXISTS (SELECT 1 FROM dbo.Seasons)
-                        INSERT INTO dbo.Seasons (Season_Name) VALUES (N'Spring'), (N'Summer'), (N'Fall'), (N'Winter');
+                        INSERT INTO dbo.Seasons (Season_Name) VALUES (N'Spring'), (N'Summer'), (N'Autumn'), (N'Winter');
 
                     /* ---------- 2. Культуры ---------- */
                     IF OBJECT_ID(N'dbo.Crops', N'U') IS NULL
@@ -99,12 +99,46 @@ namespace Stardew_Manager
                     END;
 
                     IF NOT EXISTS (SELECT 1 FROM dbo.Crops)
+                    BEGIN
                         INSERT INTO dbo.Crops
                         (Name, Seed_Price, Price, Growth_Time, Reusable, Regrow_Time, Min_Yield_Quantity, Max_Yield_Quantity, Extra_Crop_Chance, Image_Name)
                         VALUES
-                        (N'Пастернак', 20, 35, 4, 0, NULL, 1, 1, NULL, 'Parsnip.png'),
-                        (N'Клубника', 100, 120, 8, 1, 4, 1, 1, 0.02, 'Strawberry.png'),
-                        (N'Цветная капуста', 80, 175, 12, 0, NULL, 1, 1, NULL, 'Cauliflower.png');
+                        (N'Пастернак', 20, 35, 4, 0, NULL, 1, 1, 0.000, N'Parsnip.png'),
+                        (N'Картофель', 50, 80, 6, 0, NULL, 1, 2, 0.200, N'Potato.png'),
+                        (N'Цветная Капуста', 80, 175, 12, 0, NULL, 1, 1, 0.000, N'Cauliflower.png'),
+                        (N'Клубника', 100, 120, 8, 1, 4, 1, 2, 0.020, N'Strawberry.png'),
+                        (N'Зелёная Фасоль', 60, 40, 10, 1, 3, 1, 1, 0.000, N'Green_Bean.png'),
+                        (N'Чеснок', 40, 60, 4, 0, NULL, 1, 1, 0.000, N'Garlic.png'),
+                        (N'Кудрявая Капуста', 70, 110, 6, 0, NULL, 1, 1, 0.000, N'Kale.png'),
+                        (N'Ревень', 100, 220, 13, 0, NULL, 1, 1, 0.000, N'Rhubarb.png'),
+                        (N'Неочищенный Рис', 40, 30, 8, 0, NULL, 1, 2, 0.000, N'Unmilled_Rice.png'),
+                        (N'Синий Яркоцвет', 30, 50, 7, 0, NULL, 1, 1, 0.000, N'Blue_Jazz.png'),
+                        (N'Тюльпан', 20, 30, 6, 0, NULL, 1, 1, 0.000, N'Tulip.png'),
+                        (N'Черника', 80, 50, 13, 1, 4, 3, 6, 0.020, N'Blueberry.png'),
+                        (N'Дыня', 80, 250, 12, 0, NULL, 1, 1, 0.000, N'Melon.png'),
+                        (N'Помидор', 50, 60, 11, 1, 4, 1, 2, 0.050, N'Tomato.png'),
+                        (N'Карамбола', 400, 750, 13, 0, NULL, 1, 1, 0.000, N'Starfruit.png'),
+                        (N'Острый Перец', 40, 40, 5, 1, 3, 1, 2, 0.030, N'Hot_Pepper.png'),
+                        (N'Редис', 40, 90, 6, 0, NULL, 1, 1, 0.000, N'Radish.png'),
+                        (N'Краснокочанная Капуста', 100, 260, 9, 0, NULL, 1, 1, 0.000, N'Red_Cabbage.png'),
+                        (N'Кукуруза', 150, 50, 14, 1, 4, 1, 1, 0.000, N'Corn.png'),
+                        (N'Хмель', 60, 25, 11, 1, 1, 1, 1, 0.000, N'Hops.png'),
+                        (N'Летний Блеск', 50, 90, 8, 0, NULL, 1, 1, 0.000, N'Summer_Spangle.png'),
+                        (N'Мак', 100, 140, 7, 0, NULL, 1, 1, 0.000, N'Poppy.png'),
+                        (N'Пшеница', 10, 25, 4, 0, NULL, 1, 1, 0.000, N'Wheat.png'),
+                        (N'Подсолнух', 200, 80, 8, 0, NULL, 1, 1, 0.000, N'Sunflower.png'),
+                        (N'Клюква', 240, 75, 7, 1, 5, 2, 4, 0.100, N'Cranberries.png'),
+                        (N'Тыква', 100, 320, 13, 0, NULL, 1, 1, 0.000, N'Pumpkin.png'),
+                        (N'Виноград', 60, 80, 10, 1, 3, 1, 1, 0.000, N'Grape.png'),
+                        (N'Баклажан', 20, 60, 5, 1, 5, 1, 2, 0.002, N'Eggplant.png'),
+                        (N'Амарант', 70, 150, 7, 0, NULL, 1, 1, 0.000, N'Amaranth.png'),
+                        (N'Бок-чой', 50, 80, 4, 0, NULL, 1, 1, 0.000, N'Bok_Choy.png'),
+                        (N'Батат', 60, 160, 10, 0, NULL, 1, 1, 0.000, N'Yam.png'),
+                        (N'Артишок', 30, 160, 8, 0, NULL, 1, 1, 0.000, N'Artichoke.png'),
+                        (N'Свекла', 20, 100, 6, 0, NULL, 1, 1, 0.000, N'Beet.png'),
+                        (N'Сказочная Роза', 200, 290, 12, 0, NULL, 1, 1, 0.000, N'Fairy_Rose.png'),
+                        (N'Колокольчик', 50, 100, 7, 0, NULL, 1, 1, 0.000, N'1.png');
+                    END;
 
                     /* ---------- 3. Связь культур и сезонов ---------- */
                     IF OBJECT_ID(N'dbo.Crop_Season', N'U') IS NULL
@@ -126,7 +160,21 @@ namespace Stardew_Manager
                     SELECT c.Id, s.Id
                     FROM dbo.Crops c
                     INNER JOIN dbo.Seasons s ON RTRIM(s.Season_Name) = N'Spring'
-                    WHERE c.Name IN (N'Пастернак', N'Клубника', N'Цветная капуста')
+                    WHERE c.Name IN (N'Пастернак', N'Картофель', N'Цветная Капуста', N'Клубника', N'Зелёная Фасоль', N'Чеснок', N'Кудрявая Капуста', N'Ревень', N'Неочищенный Рис', N'Синий Яркоцвет', N'Тюльпан')
+                      AND NOT EXISTS (SELECT 1 FROM dbo.Crop_Season cs WHERE cs.CropId = c.Id AND cs.SeasonID = s.Id);
+
+                    INSERT INTO dbo.Crop_Season (CropId, SeasonID)
+                    SELECT c.Id, s.Id
+                    FROM dbo.Crops c
+                    INNER JOIN dbo.Seasons s ON RTRIM(s.Season_Name) = N'Summer'
+                    WHERE c.Name IN (N'Черника', N'Дыня', N'Помидор', N'Карамбола', N'Острый Перец', N'Редис', N'Краснокочанная Капуста', N'Кукуруза', N'Хмель', N'Летний Блеск', N'Мак', N'Пшеница', N'Подсолнух')
+                      AND NOT EXISTS (SELECT 1 FROM dbo.Crop_Season cs WHERE cs.CropId = c.Id AND cs.SeasonID = s.Id);
+
+                    INSERT INTO dbo.Crop_Season (CropId, SeasonID)
+                    SELECT c.Id, s.Id
+                    FROM dbo.Crops c
+                    INNER JOIN dbo.Seasons s ON RTRIM(s.Season_Name) = N'Autumn'
+                    WHERE c.Name IN (N'Кукуруза', N'Пшеница', N'Подсолнух', N'Клюква', N'Тыква', N'Виноград', N'Баклажан', N'Амарант', N'Бок-чой', N'Батат', N'Артишок', N'Свекла', N'Сказочная Роза', N'Колокольчик')
                       AND NOT EXISTS (SELECT 1 FROM dbo.Crop_Season cs WHERE cs.CropId = c.Id AND cs.SeasonID = s.Id);
 
                     /* ---------- 4. Ингредиенты для крафта ---------- */
@@ -141,6 +189,18 @@ namespace Stardew_Manager
                         );
                     END;
 
+                    IF NOT EXISTS (SELECT 1 FROM dbo.Ingredients)
+                        INSERT INTO dbo.Ingredients (Name, Sell_Price) VALUES
+                        (N'Древесный сок', 1),
+                        (N'Рыба', 100),
+                        (N'Иридиевый слиток', 1000),
+                        (N'Сосновая смола', 100),
+                        (N'Мох', 5),
+                        (N'Дубовая смола', 150),
+                        (N'Кусочек кости', 12),
+                        (N'Радиоактивная руда', 300),
+                        (N'Солнечная эссенция', 40);
+
                     /* ---------- 5. Удобрения ---------- */
                     IF OBJECT_ID(N'dbo.Fertilizers', N'U') IS NULL
                     BEGIN
@@ -148,20 +208,23 @@ namespace Stardew_Manager
                             Id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_Fertilizers PRIMARY KEY,
                             Name NVARCHAR(100) NOT NULL,
                             Price INT NULL,
-                            Growth_Multiplier DECIMAL(3,2) NOT NULL CONSTRAINT DF_Fertilizers_Growth_Multiplier DEFAULT (1.00),
+                            Growth_Multiplier DECIMAL(3,2) NOT NULL CONSTRAINT DF_Fertilizers_Growth_Multiplier DEFAULT (0.00),
                             CONSTRAINT UQ_Fertilizers_Name UNIQUE (Name),
-                            CONSTRAINT CHK_Fertilizers_Growth_Multiplier CHECK (Growth_Multiplier > 0),
+                            CONSTRAINT CHK_Fertilizers_Growth_Multiplier CHECK (Growth_Multiplier >= 0 AND Growth_Multiplier < 1),
                             CONSTRAINT CHK_Fertilizers_Price CHECK (Price IS NULL OR Price >= 0)
                         );
                     END;
 
+                    /* Growth_Multiplier — доля ускорения до первого урожая: 0.10 = на 10% быстрее. */
                     IF NOT EXISTS (SELECT 1 FROM dbo.Fertilizers)
                         INSERT INTO dbo.Fertilizers (Name, Price, Growth_Multiplier) VALUES
-                        (N'Без удобрения', 0, 1.00),
-                        (N'Базовая подкормка', 100, 1.00),
-                        (N'Качественное удобрение', NULL, 1.00),
-                        (N'Ускоренная подкормка', NULL, 0.90),
-                        (N'Люкс-подкормка', NULL, 0.75);
+                        (N'Без удобрений', 0, 0.00),
+                        (N'Обычное удобрение', 100, 0.00),
+                        (N'Высококачественное удобрение', 150, 0.00),
+                        (N'Удобрение Делюкс', 0, 0.00),
+                        (N'СкороРост', 100, 0.10),
+                        (N'СкороРост Делюкс', 150, 0.25),
+                        (N'Гипер СкороРост', 0, 0.33);
 
                     /* ---------- 6. Рецепты удобрений ---------- */
                     IF OBJECT_ID(N'dbo.Fertilizer_Recipes', N'U') IS NULL
@@ -175,6 +238,28 @@ namespace Stardew_Manager
                             CONSTRAINT FK_Fertilizer_Recipes_Ingredients FOREIGN KEY (IngredientId) REFERENCES dbo.Ingredients(Id),
                             CONSTRAINT CHK_Fertilizer_Recipes_Quantity CHECK (Quantity > 0)
                         );
+                    END;
+
+                    IF NOT EXISTS (SELECT 1 FROM dbo.Fertilizer_Recipes)
+                    BEGIN
+                        INSERT INTO dbo.Fertilizer_Recipes (FertilizerId, IngredientId, Quantity)
+                        SELECT f.Id, i.Id, x.Quantity
+                        FROM (VALUES
+                            (N'Обычное удобрение', N'Древесный сок', 2),
+                            (N'Высококачественное удобрение', N'Древесный сок', 2),
+                            (N'Высококачественное удобрение', N'Рыба', 1),
+                            (N'Удобрение Делюкс', N'Древесный сок', 40),
+                            (N'Удобрение Делюкс', N'Иридиевый слиток', 1),
+                            (N'СкороРост', N'Сосновая смола', 1),
+                            (N'СкороРост', N'Мох', 5),
+                            (N'СкороРост Делюкс', N'Дубовая смола', 1),
+                            (N'СкороРост Делюкс', N'Кусочек кости', 5),
+                            (N'Гипер СкороРост', N'Кусочек кости', 3),
+                            (N'Гипер СкороРост', N'Радиоактивная руда', 1),
+                            (N'Гипер СкороРост', N'Солнечная эссенция', 1)
+                        ) AS x(FertilizerName, IngredientName, Quantity)
+                        INNER JOIN dbo.Fertilizers f ON f.Name = x.FertilizerName
+                        INNER JOIN dbo.Ingredients i ON i.Name = x.IngredientName;
                     END;
 
                     /* ---------- 7. Качества урожая ---------- */
@@ -192,10 +277,10 @@ namespace Stardew_Manager
 
                     IF NOT EXISTS (SELECT 1 FROM dbo.Qualities)
                         INSERT INTO dbo.Qualities (Code, Name, Price_Multiplier) VALUES
-                        (N'normal', N'Обычное', 1.00),
-                        (N'silver', N'Серебряное', 1.25),
-                        (N'gold', N'Золотое', 1.50),
-                        (N'iridium', N'Иридиевое', 2.00);
+                        (N'Normal', N'Обычное', 1.00),
+                        (N'Silver', N'Серябряное', 1.25),
+                        (N'Gold', N'Золотое', 1.50),
+                        (N'Iridium', N'Иридиевое', 2.00);
 
                     /* ---------- 8. Шансы качества по удобрениям ---------- */
                     IF OBJECT_ID(N'dbo.Quality_Chances', N'U') IS NULL
@@ -211,6 +296,44 @@ namespace Stardew_Manager
                         );
                     END;
 
+                    IF NOT EXISTS (SELECT 1 FROM dbo.Quality_Chances)
+                    BEGIN
+                        INSERT INTO dbo.Quality_Chances (FertilizerId, QualityId, Chance)
+                        SELECT f.Id, q.Id, x.Chance
+                        FROM (VALUES
+                            (N'Без удобрений', N'Normal', CAST(0.9700 AS DECIMAL(5,4))),
+                            (N'Без удобрений', N'Silver', CAST(0.0200 AS DECIMAL(5,4))),
+                            (N'Без удобрений', N'Gold', CAST(0.0100 AS DECIMAL(5,4))),
+                            (N'Без удобрений', N'Iridium', CAST(0.0000 AS DECIMAL(5,4))),
+                            (N'Обычное удобрение', N'Normal', CAST(0.8800 AS DECIMAL(5,4))),
+                            (N'Обычное удобрение', N'Silver', CAST(0.0800 AS DECIMAL(5,4))),
+                            (N'Обычное удобрение', N'Gold', CAST(0.0400 AS DECIMAL(5,4))),
+                            (N'Обычное удобрение', N'Iridium', CAST(0.0000 AS DECIMAL(5,4))),
+                            (N'Высококачественное удобрение', N'Normal', CAST(0.7800 AS DECIMAL(5,4))),
+                            (N'Высококачественное удобрение', N'Silver', CAST(0.1400 AS DECIMAL(5,4))),
+                            (N'Высококачественное удобрение', N'Gold', CAST(0.0800 AS DECIMAL(5,4))),
+                            (N'Высококачественное удобрение', N'Iridium', CAST(0.0000 AS DECIMAL(5,4))),
+                            (N'Удобрение Делюкс', N'Normal', CAST(0.0000 AS DECIMAL(5,4))),
+                            (N'Удобрение Делюкс', N'Silver', CAST(0.8400 AS DECIMAL(5,4))),
+                            (N'Удобрение Делюкс', N'Gold', CAST(0.1000 AS DECIMAL(5,4))),
+                            (N'Удобрение Делюкс', N'Iridium', CAST(0.0600 AS DECIMAL(5,4))),
+                            (N'СкороРост', N'Normal', CAST(0.9700 AS DECIMAL(5,4))),
+                            (N'СкороРост', N'Silver', CAST(0.0200 AS DECIMAL(5,4))),
+                            (N'СкороРост', N'Gold', CAST(0.0100 AS DECIMAL(5,4))),
+                            (N'СкороРост', N'Iridium', CAST(0.0000 AS DECIMAL(5,4))),
+                            (N'СкороРост Делюкс', N'Normal', CAST(0.9700 AS DECIMAL(5,4))),
+                            (N'СкороРост Делюкс', N'Silver', CAST(0.0200 AS DECIMAL(5,4))),
+                            (N'СкороРост Делюкс', N'Gold', CAST(0.0100 AS DECIMAL(5,4))),
+                            (N'СкороРост Делюкс', N'Iridium', CAST(0.0000 AS DECIMAL(5,4))),
+                            (N'Гипер СкороРост', N'Normal', CAST(0.9700 AS DECIMAL(5,4))),
+                            (N'Гипер СкороРост', N'Silver', CAST(0.0200 AS DECIMAL(5,4))),
+                            (N'Гипер СкороРост', N'Gold', CAST(0.0100 AS DECIMAL(5,4))),
+                            (N'Гипер СкороРост', N'Iridium', CAST(0.0000 AS DECIMAL(5,4)))
+                        ) AS x(FertilizerName, QualityCode, Chance)
+                        INNER JOIN dbo.Fertilizers f ON f.Name = x.FertilizerName
+                        INNER JOIN dbo.Qualities q ON q.Code = x.QualityCode;
+                    END;
+
                     /* ---------- 9. Инвентарь игрока ---------- */
                     IF OBJECT_ID(N'dbo.User_Inventory', N'U') IS NULL
                     BEGIN
@@ -220,51 +343,6 @@ namespace Stardew_Manager
                             CONSTRAINT FK_User_Inventory_Ingredients FOREIGN KEY (IngredientId) REFERENCES dbo.Ingredients(Id) ON DELETE CASCADE,
                             CONSTRAINT CHK_User_Inventory_Available_Quantity CHECK (Available_Quantity >= 0)
                         );
-                    END;
-
-                    /* ---------- Демонстрационные данные (только если справочники пустые) ---------- */
-                    IF NOT EXISTS (SELECT 1 FROM dbo.Ingredients)
-                        INSERT INTO dbo.Ingredients (Name, Sell_Price) VALUES
-                        (N'Сосновая смола', 100),
-                        (N'Дубовая смола', 150),
-                        (N'Раковина', 50),
-                        (N'Коралл', 80),
-                        (N'Сок', 2),
-                        (N'Рыба', 100);
-
-                    IF NOT EXISTS (SELECT 1 FROM dbo.Fertilizer_Recipes)
-                    BEGIN
-                        INSERT INTO dbo.Fertilizer_Recipes (FertilizerId, IngredientId, Quantity)
-                        SELECT f.Id, i.Id, x.Quantity
-                        FROM (VALUES
-                            (N'Ускоренная подкормка', N'Сосновая смола', 1),
-                            (N'Ускоренная подкормка', N'Раковина', 1),
-                            (N'Люкс-подкормка', N'Дубовая смола', 1),
-                            (N'Люкс-подкормка', N'Коралл', 1),
-                            (N'Качественное удобрение', N'Сок', 5),
-                            (N'Качественное удобрение', N'Рыба', 1)
-                        ) AS x(FertilizerName, IngredientName, Quantity)
-                        INNER JOIN dbo.Fertilizers f ON f.Name = x.FertilizerName
-                        INNER JOIN dbo.Ingredients i ON i.Name = x.IngredientName;
-                    END;
-
-                    IF NOT EXISTS (SELECT 1 FROM dbo.Quality_Chances)
-                    BEGIN
-                        INSERT INTO dbo.Quality_Chances (FertilizerId, QualityId, Chance)
-                        SELECT f.Id, q.Id, x.Chance
-                        FROM (VALUES
-                            (N'Без удобрения', N'normal', CAST(1.0000 AS DECIMAL(5,4))),
-                            (N'Базовая подкормка', N'normal', CAST(0.6000 AS DECIMAL(5,4))),
-                            (N'Базовая подкормка', N'silver', CAST(0.3000 AS DECIMAL(5,4))),
-                            (N'Базовая подкормка', N'gold', CAST(0.1000 AS DECIMAL(5,4))),
-                            (N'Качественное удобрение', N'normal', CAST(0.4000 AS DECIMAL(5,4))),
-                            (N'Качественное удобрение', N'silver', CAST(0.3000 AS DECIMAL(5,4))),
-                            (N'Качественное удобрение', N'gold', CAST(0.3000 AS DECIMAL(5,4))),
-                            (N'Ускоренная подкормка', N'normal', CAST(1.0000 AS DECIMAL(5,4))),
-                            (N'Люкс-подкормка', N'normal', CAST(1.0000 AS DECIMAL(5,4)))
-                        ) AS x(FertilizerName, QualityCode, Chance)
-                        INNER JOIN dbo.Fertilizers f ON f.Name = x.FertilizerName
-                        INNER JOIN dbo.Qualities q ON q.Code = x.QualityCode;
                     END;
                 ";
 
