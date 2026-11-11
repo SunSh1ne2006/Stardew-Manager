@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
 
@@ -112,8 +113,8 @@ namespace Stardew_Manager
                             qualities[id] = new QualityTier
                             {
                                 Id = id,
-                                Code = reader["Code"].ToString() ?? string.Empty,
-                                Name = reader["Name"].ToString() ?? string.Empty,
+                                Code = NormalizeText(reader["Code"].ToString()),
+                                Name = NormalizeText(reader["Name"].ToString()),
                                 PriceMultiplier = Convert.ToDouble(reader["Price_Multiplier"])
                             };
                         }
@@ -129,7 +130,7 @@ namespace Stardew_Manager
                             var fertilizer = new Fertilizer
                             {
                                 Id = Convert.ToInt32(reader["Id"]),
-                                Name = reader["Name"].ToString() ?? string.Empty,
+                                Name = NormalizeText(reader["Name"].ToString()),
                                 PurchasePrice = reader["Price"] == DBNull.Value
                                     ? (int?)null
                                     : Convert.ToInt32(reader["Price"]),
@@ -182,7 +183,7 @@ namespace Stardew_Manager
                                 Ingredient = new Ingredient
                                 {
                                     Id = Convert.ToInt32(reader["Id"]),
-                                    Name = reader["Name"].ToString() ?? string.Empty,
+                                    Name = NormalizeText(reader["Name"].ToString()),
                                     SellPrice = Convert.ToInt32(reader["Sell_Price"])
                                 },
                                 Quantity = Convert.ToInt32(reader["Quantity"])
@@ -198,6 +199,23 @@ namespace Stardew_Manager
             }
 
             return fertilizers;
+        }
+
+        /// <summary>
+        /// Убирает мусор из текстовых полей БД: хвостовые пробелы nchar, переводы строк,
+        /// табуляции и попавшие при импорте имена файлов вроде "Deluxe Speed-Gro.png".
+        /// </summary>
+        private static string NormalizeText(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return string.Empty;
+
+            string text = value.Replace('\r', ' ').Replace('\n', ' ').Replace('\t', ' ');
+
+            text = Regex.Replace(text, @"\S+\.(png|jpe?g|bmp|gif)", " ", RegexOptions.IgnoreCase);
+            text = Regex.Replace(text, @"\s{2,}", " ");
+
+            return text.Trim();
         }
     }
 }

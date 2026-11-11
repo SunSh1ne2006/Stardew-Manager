@@ -294,6 +294,7 @@ namespace Stardew_Manager
             table.Columns.Add("Ср. цена шт (g)", typeof(double));
             table.Columns.Add("Выручка с грядки (g)", typeof(double));
             table.Columns.Add("Затраты (g)", typeof(int));
+            table.Columns.Add("Способ", typeof(string));
             table.Columns.Add("Прибыль с грядки (g)", typeof(int));
             table.Columns.Add("Δ к «без удобрения»", typeof(int));
             table.Columns.Add("Вердикт", typeof(string));
@@ -302,7 +303,8 @@ namespace Stardew_Manager
             {
                 table.Rows.Add(row.CropName, row.FertilizerName, row.GrowthDays, row.Harvests,
                     Math.Round(row.ExpectedUnitPrice, 2), Math.Round(row.RevenuePerPlot, 1),
-                    row.InvestmentPerPlot, row.ProfitPerPlot, row.DeltaVsNoFertilizer, row.Verdict);
+                    row.InvestmentPerPlot, row.CostSource, row.ProfitPerPlot,
+                    row.DeltaVsNoFertilizer, row.Verdict);
             }
 
             Data.DataSource = table;

@@ -61,16 +61,15 @@ namespace Stardew_Manager
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
 
-        /// <summary>Цена покупки за штуку. NULL — удобрение нельзя купить, только скрафтить.</summary>
+        /// <summary>Цена покупки за штуку. NULL или 0 — удобрение не продаётся, только крафтится.</summary>
         public int? PurchasePrice { get; set; }
 
         /// <summary>
-        /// Значение колонки Growth_Multiplier.
-        /// Трактовка: множитель времени роста. 0.90 — рост быстрее на 10%, 0.75 — на 25%.
-        /// Влияет только на созревание до первого урожая; период повторного плодоношения не меняется.
-        /// Если в базе лежит множитель скорости (&gt; 1), он автоматически переводится во время (см. TimeFactor).
+        /// Значение колонки Growth_Multiplier — доля сокращения времени до первого урожая:
+        /// 0.10 — на 10% быстрее (СкороРост), 0.25 — на 25%, 0.33 — на 33%, 0 — без ускорения.
+        /// Период повторного плодоношения (Regrow_Time) не меняется.
         /// </summary>
-        public double GrowthMultiplier { get; set; } = 1.0;
+        public double GrowthMultiplier { get; set; }
 
         public List<QualityChance> QualityChances { get; } = new List<QualityChance>();
         public List<FertilizerRecipeItem> Recipe { get; } = new List<FertilizerRecipeItem>();
@@ -83,7 +82,7 @@ namespace Stardew_Manager
                 Id = 0,
                 Name = "Без удобрения",
                 PurchasePrice = 0,
-                GrowthMultiplier = 1.0
+                GrowthMultiplier = 0.0
             };
         }
 
@@ -93,18 +92,23 @@ namespace Stardew_Manager
         }
 
         /// <summary>
-        /// Множитель времени до первого урожая: 0.75 → культура созревает за 75% дней.
+        /// Множитель времени до первого урожая: ускорение 0.25 → культура созревает за 75% дней.
         /// На Regrow_Time не распространяется.
         /// </summary>
         public double TimeFactor
         {
             get
             {
-                if (GrowthMultiplier <= 0)
+                double reduction = GrowthMultiplier;
+
+                if (reduction <= 0)
                     return 1.0;
 
-                // Часть схем хранит множитель скорости (1.10 = +10% скорости), а не времени.
-                return GrowthMultiplier > 1.0 ? 1.0 / GrowthMultiplier : GrowthMultiplier;
+                // Защита от мусорных значений: ускорение не может быть 100% и более.
+                if (reduction >= 1.0)
+                    reduction = 0.99;
+
+                return 1.0 - reduction;
             }
         }
 
@@ -177,15 +181,63 @@ namespace Stardew_Manager
             }
         }
 
-        /// <summary>Сколько стоит применить удобрение на одну грядку (покупка или крафт).</summary>
-        public int CostPerTile
+        /// <summary>Можно ли купить удобрение в магазине (Price &gt; 0).</summary>
+        public bool CanBuy
         {
-            get { return PurchasePrice ?? RecipeCost; }
+            get { return PurchasePrice.HasValue && PurchasePrice.Value > 0; }
         }
 
-        public bool IsCraftOnly
+        /// <summary>Есть ли рецепт крафта.</summary>
+        public bool CanCraft
         {
-            get { return PurchasePrice == null; }
+            get { return Recipe.Count > 0; }
+        }
+
+        /// <summary>
+        /// Сколько стоит применить удобрение на одну грядку по самому дешёвому способу:
+        /// покупка (Price) или крафт из ингредиентов по их цене продажи.
+        /// </summary>
+        public int CostPerTile
+        {
+            get
+            {
+                int purchase = PurchasePrice.HasValue ? PurchasePrice.Value : 0;
+                bool canBuy = purchase > 0;
+                bool canCraft = Recipe.Count > 0;
+
+                if (canBuy && canCraft)
+                    return Math.Min(purchase, RecipeCost);
+
+                if (canBuy)
+                    return purchase;
+
+                if (canCraft)
+                    return RecipeCost;
+
+                return 0;
+            }
+        }
+
+        /// <summary>Как выгоднее получить удобрение — для подсказки в интерфейсе.</summary>
+        public string CostSource
+        {
+            get
+            {
+                int purchase = PurchasePrice.HasValue ? PurchasePrice.Value : 0;
+                bool canBuy = purchase > 0;
+                bool canCraft = Recipe.Count > 0;
+
+                if (canBuy && canCraft)
+                    return purchase <= RecipeCost ? "покупка" : "крафт";
+
+                if (canBuy)
+                    return "покупка";
+
+                if (canCraft)
+                    return "крафт";
+
+                return "бесплатно";
+            }
         }
 
         /// <summary>Короткое человекочитаемое описание эффекта для подсказок в UI.</summary>
